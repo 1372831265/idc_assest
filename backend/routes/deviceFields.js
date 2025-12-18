@@ -70,4 +70,35 @@ router.delete('/:fieldId', async (req, res) => {
   }
 });
 
+// 批量更新字段配置
+router.post('/config', async (req, res) => {
+  try {
+    const fieldConfigs = req.body;
+    
+    // 验证输入
+    if (!Array.isArray(fieldConfigs)) {
+      return res.status(400).json({ error: '输入必须是数组' });
+    }
+    
+    // 批量更新字段配置
+    const updatedFields = [];
+    for (const config of fieldConfigs) {
+      // 使用fieldName作为更新条件，因为这是唯一的
+      const [updated] = await DeviceField.update(
+        { visible: config.visible },
+        { where: { fieldName: config.fieldName } }
+      );
+      
+      if (updated) {
+        const updatedField = await DeviceField.findOne({ where: { fieldName: config.fieldName } });
+        updatedFields.push(updatedField);
+      }
+    }
+    
+    res.json(updatedFields);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

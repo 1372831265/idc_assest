@@ -20,10 +20,12 @@ function Dashboard() {
         
         // 获取所有设备
         const devicesRes = await axios.get('/api/devices');
-        // 设备API返回的是包含devices数组的对象
-        const devices = devicesRes.data.devices || devicesRes.data;
-        const totalDevices = devices.length;
-        const faultDevices = devices.filter(device => device.status === 'fault').length;
+        // 设备API返回的是包含total和devices数组的对象
+        const totalDevices = devicesRes.data.total;
+        // 获取所有设备以统计故障设备数量
+        const allDevicesRes = await axios.get('/api/devices', { params: { pageSize: totalDevices } });
+        const allDevices = allDevicesRes.data.devices || allDevicesRes.data;
+        const faultDevices = allDevices.filter(device => device.status === 'fault').length;
         
         // 获取所有机柜
         const racksRes = await axios.get('/api/racks');

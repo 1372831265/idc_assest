@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, message, Card, Space, InputNumber } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, message, Card, Space, InputNumber, Upload, Progress, Alert } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Option } = Select;
@@ -11,6 +11,8 @@ function RoomManagement() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
   const [form] = Form.useForm();
+
+ 
 
   // 获取所有机房
   const fetchRooms = async () => {
@@ -89,6 +91,12 @@ function RoomManagement() {
       }
     });
   };
+
+
+
+
+
+
 
   // 状态标签映射
   const statusMap = {
@@ -171,9 +179,11 @@ function RoomManagement() {
   return (
     <div>
       <Card title="机房管理" extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
-          添加机房
-        </Button>
+        <Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
+            添加机房
+          </Button>
+        </Space>
       }>
         <Table
           columns={columns}
@@ -265,6 +275,10 @@ function RoomManagement() {
           </Form.Item>
         </Form>
       </Modal>
+
+
+
+
     </div>
   );
 }
