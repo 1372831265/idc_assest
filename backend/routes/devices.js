@@ -1,17 +1,58 @@
 const express = require('express');
 const router = express.Router();
+const { Op } = require('sequelize');
 const Device = require('../models/Device');
 const Rack = require('../models/Rack');
 
-// 获取所有设备
+// 获取所有设备（支持搜索和筛选）
 router.get('/', async (req, res) => {
   try {
-    const devices = await Device.findAll({
+    const { keyword, status, type, page = 1, pageSize = 10 } = req.query;
+    const offset = (page - 1) * pageSize;
+    
+    // 构建查询条件
+    const where = {};
+    
+    // 关键词搜索（所有文本字段）
+    if (keyword) {
+      where[Op.or] = [
+        { deviceId: { [Op.like]: `%${keyword}%` } },
+        { name: { [Op.like]: `%${keyword}%` } },
+        { type: { [Op.like]: `%${keyword}%` } },
+        { model: { [Op.like]: `%${keyword}%` } },
+        { serialNumber: { [Op.like]: `%${keyword}%` } },
+        { position: { [Op.like]: `%${keyword}%` } },
+        { ipAddress: { [Op.like]: `%${keyword}%` } },
+        { description: { [Op.like]: `%${keyword}%` } }
+      ];
+    }
+    
+    // 状态筛选
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+    
+    // 分类筛选
+    if (type && type !== 'all') {
+      where.type = type;
+    }
+    
+    // 执行查询
+    const { count, rows } = await Device.findAndCountAll({
+      where,
       include: [
         { model: Rack }
-      ]
+      ],
+      offset,
+      limit: parseInt(pageSize)
     });
-    res.json(devices);
+    
+    res.json({
+      total: count,
+      devices: rows,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize)
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -20,16 +20,20 @@ function Dashboard() {
         
         // 获取所有设备
         const devicesRes = await axios.get('/api/devices');
-        const totalDevices = devicesRes.data.length;
-        const faultDevices = devicesRes.data.filter(device => device.status === 'fault').length;
+        // 设备API返回的是包含devices数组的对象
+        const devices = devicesRes.data.devices || devicesRes.data;
+        const totalDevices = devices.length;
+        const faultDevices = devices.filter(device => device.status === 'fault').length;
         
         // 获取所有机柜
         const racksRes = await axios.get('/api/racks');
-        const totalRacks = racksRes.data.length;
+        const racks = racksRes.data;
+        const totalRacks = racks.length;
         
         // 获取所有机房
         const roomsRes = await axios.get('/api/rooms');
-        const totalRooms = roomsRes.data.length;
+        const rooms = roomsRes.data;
+        const totalRooms = rooms.length;
         
         setStats({
           totalDevices,

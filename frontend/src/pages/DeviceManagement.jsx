@@ -14,6 +14,13 @@ function DeviceManagement() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [form] = Form.useForm();
+  // 搜索和筛选状态
+  const [keyword, setKeyword] = useState('');
+  const [status, setStatus] = useState('all');
+  const [type, setType] = useState('all');
+  const [searchForm] = Form.useForm();
+  // 分页状态
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   // 自定义字段状态
   const [customFieldName, setCustomFieldName] = useState('');
   const [customFieldValue, setCustomFieldValue] = useState('');
@@ -21,14 +28,25 @@ function DeviceManagement() {
   const [deviceFields, setDeviceFields] = useState([]);
   const [loadingFields, setLoadingFields] = useState(true);
 
-  // 获取所有设备
-  const fetchDevices = async () => {
+  // 获取所有设备（支持搜索、筛选和分页）
+  const fetchDevices = async (page = 1, pageSize = 10, searchParams = {}) => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/devices');
+      
+      // 构建查询参数
+      const params = {
+        page,
+        pageSize,
+        keyword: searchParams.keyword || keyword,
+        status: searchParams.status || status,
+        type: searchParams.type || type
+      };
+      
+      const response = await axios.get('/api/devices', { params });
+      const { devices, total } = response.data;
       
       // 将customFields中的字段值映射为设备对象的直接属性
-      const processedDevices = response.data.map(device => {
+      const processedDevices = devices.map(device => {
         const deviceWithFields = { ...device };
         
         // 如果有自定义字段，将其展开为设备对象的直接属性
@@ -42,6 +60,7 @@ function DeviceManagement() {
       });
       
       setDevices(processedDevices);
+      setPagination(prev => ({ ...prev, current: page, pageSize, total }));
     } catch (error) {
       message.error('获取设备列表失败');
       console.error('获取设备列表失败:', error);
@@ -189,6 +208,26 @@ function DeviceManagement() {
     }
   };
 
+  // 搜索处理函数
+  const handleSearch = (values) => {
+    fetchDevices(1, 10, values);
+  };
+
+  // 重置筛选条件
+  const handleReset = () => {
+    setKeyword('');
+    setStatus('all');
+    setType('all');
+    searchForm.resetFields();
+    fetchDevices(1, 10, { keyword: '', status: 'all', type: 'all' });
+  };
+
+  // 表格分页变化处理
+  const handleTableChange = (pagination) => {
+    setPagination(pagination);
+    fetchDevices(pagination.current, pagination.pageSize);
+  };
+
   // 删除设备
   const handleDelete = async (deviceId) => {
     Modal.confirm({
@@ -308,12 +347,73 @@ function DeviceManagement() {
           添加设备
         </Button>
       }>
+        {/* 搜索和筛选区域 */}
+        <Card size="small" style={{ marginBottom: 16 }}>
+          <Form
+            form={searchForm}
+            layout="inline"
+            onFinish={handleSearch}
+            style={{ width: '100%' }}
+          >
+            <Form.Item name="keyword">
+              <Input
+                placeholder="搜索设备ID、名称、类型、型号、序列号、IP、描述..."
+                prefix={<SearchOutlined />}
+                style={{ width: 300 }}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+              />
+            </Form.Item>
+            
+            <Form.Item name="status">
+              <Select
+                value={status}
+                onChange={setStatus}
+                style={{ width: 150 }}
+              >
+                <Option value="all">所有状态</Option>
+                <Option value="running">运行中</Option>
+                <Option value="maintenance">维护中</Option>
+                <Option value="offline">离线</Option>
+                <Option value="fault">故障</Option>
+              </Select>
+            </Form.Item>
+            
+            <Form.Item name="type">
+              <Select
+                value={type}
+                onChange={setType}
+                style={{ width: 150 }}
+              >
+                <Option value="all">所有类型</Option>
+                <Option value="server">服务器</Option>
+                <Option value="switch">交换机</Option>
+                <Option value="router">路由器</Option>
+                <Option value="storage">存储设备</Option>
+                <Option value="other">其他设备</Option>
+              </Select>
+            </Form.Item>
+            
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                  搜索
+                </Button>
+                <Button onClick={handleReset}>
+                  重置
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Card>
+        
         <Table
           columns={columns}
           dataSource={devices}
           rowKey="deviceId"
           loading={loading}
-          pagination={{ pageSize: 10 }}
+          pagination={pagination}
+          onChange={handleTableChange}
         />
       </Card>
 
