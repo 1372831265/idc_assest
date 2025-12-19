@@ -1,7 +1,7 @@
-import React from 'react';
-import { Layout, Menu, theme } from 'antd';
+import React, { useState } from 'react';
+import { Layout, Menu, theme, Button } from 'antd';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined } from '@ant-design/icons';
+import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined, MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import DeviceManagement from './pages/DeviceManagement';
 import RackManagement from './pages/RackManagement';
@@ -12,6 +12,7 @@ import DeviceFieldManagement from './pages/DeviceFieldManagement';
 const { Content, Sider } = Layout;
 
 function App() {
+  const [collapsed, setCollapsed] = useState(false);
   const { 
     token: { colorBgContainer, borderRadiusLG }, 
   } = theme.useToken();
@@ -19,11 +20,47 @@ function App() {
   return (
     <Router>
       <Layout>
-        <Sider width={200} style={{ backgroundColor: colorBgContainer }}>
+        <Sider 
+          width={200} 
+          collapsedWidth={80}
+          collapsed={collapsed}
+          style={{
+            backgroundColor: colorBgContainer,
+            boxShadow: '2px 0 8px rgba(0,0,0,0.08)'
+          }}
+        >
+          {/* 自定义收起/展开按钮 */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: 64,
+            borderBottom: '1px solid #f0f0f0',
+            marginBottom: 16
+          }}>
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              style={{
+                fontSize: 18,
+                padding: '8px',
+                borderRadius: 4,
+                transition: 'all 0.3s',
+                '&:hover': {
+                  backgroundColor: '#e6f7ff'
+                }
+              }}
+            />
+          </div>
             <Menu
               mode="inline"
               defaultSelectedKeys={['1']}
-              style={{ height: '100%', borderRight: 0 }}
+              style={{
+                height: 'calc(100% - 80px)', 
+                borderRight: 0,
+                backgroundColor: 'transparent'
+              }}
               items={[
                 {
                   key: '1',

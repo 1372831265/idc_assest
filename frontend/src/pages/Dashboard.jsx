@@ -17,13 +17,13 @@ import axios from 'axios';
 
 function Dashboard() {
   const [stats, setStats] = useState({
-    totalDevices: 0,
-    totalRacks: 0,
-    totalRooms: 0,
-    faultDevices: 0,
-    deviceGrowth: 2.5,  // 示例增长数据
-    faultTrend: -12.3   // 示例趋势数据
-  });
+      totalDevices: 0,
+      totalRacks: 0,
+      totalRooms: 0,
+      faultDevices: 0,
+      deviceGrowth: 2.5,  // 示例增长数据
+      faultTrend: -12.3   // 示例趋势数据
+    });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,7 +55,10 @@ function Dashboard() {
           totalDevices,
           totalRacks,
           totalRooms,
-          faultDevices
+          faultDevices,
+          // 保留或更新趋势数据
+          deviceGrowth: stats.deviceGrowth || 0,
+          faultTrend: stats.faultTrend || 0
         });
       } catch (error) {
         message.error('获取统计数据失败');
