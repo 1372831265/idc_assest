@@ -9,7 +9,7 @@ import RoomManagement from './pages/RoomManagement';
 import DeviceFieldManagement from './pages/DeviceFieldManagement';
 
 
-const { Header, Content, Sider } = Layout;
+const { Content, Sider } = Layout;
 
 function App() {
   const { 
@@ -19,18 +19,7 @@ function App() {
   return (
     <Router>
       <Layout>
-        <Header className="header" style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          backgroundColor: '#001529',
-          color: '#fff',
-          fontSize: '20px',
-          fontWeight: 'bold'
-        }}>
-          IDC设备管理系统
-        </Header>
-        <Layout>
-          <Sider width={200} style={{ backgroundColor: colorBgContainer }}>
+        <Sider width={200} style={{ backgroundColor: colorBgContainer }}>
             <Menu
               mode="inline"
               defaultSelectedKeys={['1']}
@@ -64,25 +53,24 @@ function App() {
               ]}
             />
           </Sider>
-          <Layout style={{ padding: '0 24px 24px' }}>
-            <Content
-              style={{
-                padding: 24,
-                margin: 0,
-                minHeight: 280,
-                background: colorBgContainer,
-                borderRadius: borderRadiusLG,
-              }}
-            >
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/devices" element={<DeviceManagement />} />
-                <Route path="/racks" element={<RackManagement />} />
-                <Route path="/rooms" element={<RoomManagement />} />
-                <Route path="/fields" element={<DeviceFieldManagement />} />
-              </Routes>
-            </Content>
-          </Layout>
+        <Layout style={{ padding: '0 24px 24px' }}>
+          <Content
+            style={{
+              padding: 24,
+              margin: 0,
+              minHeight: 280,
+              background: colorBgContainer,
+              borderRadius: borderRadiusLG,
+            }}
+          >
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/devices" element={<DeviceManagement />} />
+              <Route path="/racks" element={<RackManagement />} />
+              <Route path="/rooms" element={<RoomManagement />} />
+              <Route path="/fields" element={<DeviceFieldManagement />} />
+            </Routes>
+          </Content>
         </Layout>
       </Layout>
     </Router>

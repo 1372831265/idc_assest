@@ -1,11 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Card, Space, InputNumber, Switch, Upload, Progress, Checkbox } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UploadOutlined, DownloadOutlined, SettingOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UploadOutlined, DownloadOutlined, SettingOutlined, UndoOutlined, CloudServerOutlined, SwapOutlined, SafetyOutlined, DatabaseOutlined, AppstoreOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+
+// 可调整列宽的表头组件
+const ResizeableTitle = (props) => {
+  const { onResize, width, ...restProps } = props;
+  
+  if (!width) {
+    return <th {...restProps} />;
+  }
+  
+  const handleMouseDown = (e) => {
+    if (!onResize) return;
+    
+   
+    const startX = e.pageX;
+    const startWidth = width;
+    
+    const handleMouseMove = (moveEvent) => {
+      const diff = moveEvent.pageX - startX;
+      const newWidth = Math.max(50, startWidth + diff); // 最小宽度50px
+      onResize(newWidth);
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+  
+  return (
+    <th
+      {...restProps}
+      style={{
+        position: 'relative',
+        width: width,
+        maxWidth: width,
+        minWidth: width,
+        ...restProps.style,
+      }}
+    >
+      {restProps.children}
+      <div
+        style={{
+          position: 'absolute',
+          right: '-3px',
+          top: 0,
+          bottom: 0,
+          width: '6px',
+          cursor: 'col-resize',
+          backgroundColor: 'transparent',
+          zIndex: 10,
+        }}
+        onMouseDown={handleMouseDown}
+        title="拖拽调整列宽"
+      />
+    </th>
+  );
+};
 
 function DeviceManagement() {
   const [devices, setDevices] = useState([]);
@@ -38,13 +98,18 @@ function DeviceManagement() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [selectedDevices, setSelectedDevices] = useState([]);
-  const [selectAll, setSelectAll] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+
   // 自定义字段状态
   const [customFieldName, setCustomFieldName] = useState('');
   const [customFieldValue, setCustomFieldValue] = useState('');
 
   // 字段配置模态框
   const [fieldConfigModalVisible, setFieldConfigModalVisible] = useState(false);
+  
+  // 列宽状态
+  const [columnWidths, setColumnWidths] = useState({});
 
   // 获取所有设备（支持搜索、筛选和分页）
   const fetchDevices = async (page = 1, pageSize = 10, searchParams = {}) => {
@@ -341,6 +406,12 @@ function DeviceManagement() {
     });
   };
 
+  // 显示设备详情
+  const handleShowDetail = (device) => {
+    setSelectedDevice(device);
+    setDetailModalVisible(true);
+  };
+
   // 导出设备数据
   const handleExport = async () => {
     try {
@@ -369,26 +440,7 @@ function DeviceManagement() {
     }
   };
 
-  // 处理单个设备选择
-  const handleDeviceSelect = (deviceId) => {
-    setSelectedDevices(prev => {
-      if (prev.includes(deviceId)) {
-        return prev.filter(id => id !== deviceId);
-      } else {
-        return [...prev, deviceId];
-      }
-    });
-  };
 
-  // 处理全选/取消全选
-  const handleSelectAll = (e) => {
-    setSelectAll(e.target.checked);
-    if (e.target.checked) {
-      setSelectedDevices(devices.map(device => device.deviceId));
-    } else {
-      setSelectedDevices([]);
-    }
-  };
 
 
 
@@ -464,6 +516,36 @@ function DeviceManagement() {
     other: '其他设备'
   };
 
+  // 获取设备类型图标
+  const getDeviceTypeIcon = (type) => {
+    const iconMap = {
+      server: <CloudServerOutlined style={{ color: '#1890ff' }} />,
+      switch: <SwapOutlined style={{ color: '#52c41a' }} />,
+      router: <SafetyOutlined style={{ color: '#faad14' }} />,
+      storage: <DatabaseOutlined style={{ color: '#722ed1' }} />,
+      other: <AppstoreOutlined style={{ color: '#8c8c8c' }} />
+    };
+    return iconMap[type] || <AppstoreOutlined style={{ color: '#8c8c8c' }} />;
+  };
+
+  // 处理列宽变化
+  const handleColumnResize = (key, width) => {
+    setColumnWidths(prev => ({ ...prev, [key]: width }));
+  };
+  
+  // 重置列宽到默认值
+  const resetColumnWidths = () => {
+    setColumnWidths({});
+    message.success('列宽已重置为默认值');
+  };
+  
+  // 处理表头单元格拖拽
+  const handleHeaderCellResize = (key) => (column) => ({
+    width: column.width,
+    onResize: (width) => handleColumnResize(key, width),
+  });
+
+  
   // 动态生成表格列配置
   const columns = React.useMemo(() => {
     const generatedColumns = [];
@@ -480,12 +562,16 @@ function DeviceManagement() {
           title: '所在机房',
           dataIndex: ['Rack', 'Room', 'name'],
           key: 'roomName',
+          width: columnWidths.roomName || 120,
+          onHeaderCell: handleHeaderCellResize('roomName'),
         });
         // 添加机柜信息列
         generatedColumns.push({
           title: field.displayName,
           dataIndex: ['Rack', 'name'],
           key: field.fieldName,
+          width: columnWidths[field.fieldName] || 120,
+          onHeaderCell: handleHeaderCellResize(field.fieldName),
         });
       } 
       // 特殊处理设备类型
@@ -494,17 +580,15 @@ function DeviceManagement() {
           title: field.displayName,
           dataIndex: field.fieldName,
           key: field.fieldName,
+          width: columnWidths[field.fieldName] || 100,
+          onHeaderCell: handleHeaderCellResize(field.fieldName),
           render: (type) => {
-            if (Array.isArray(type)) {
-              return (
-                <Space>
-                  {type.map(t => (
-                    <span key={t}>{typeMap[t]}</span>
-                  ))}
-                </Space>
-              );
-            }
-            return typeMap[type];
+            return (
+              <Space>
+                {getDeviceTypeIcon(type)}
+                <span>{typeMap[type]}</span>
+              </Space>
+            );
           },
         });
       }
@@ -514,6 +598,8 @@ function DeviceManagement() {
           title: field.displayName,
           dataIndex: field.fieldName,
           key: field.fieldName,
+          width: columnWidths[field.fieldName] || 100,
+          onHeaderCell: handleHeaderCellResize(field.fieldName),
           render: (status) => {
             if (Array.isArray(status)) {
               return (
@@ -540,6 +626,8 @@ function DeviceManagement() {
           title: field.displayName,
           dataIndex: field.fieldName,
           key: field.fieldName,
+          width: columnWidths[field.fieldName] || 120,
+          onHeaderCell: handleHeaderCellResize(field.fieldName),
           render: (date) => {
             if (!date) return '';
             
@@ -565,11 +653,46 @@ function DeviceManagement() {
       }
       // 普通字段
       else {
-        generatedColumns.push({
+        // 为不同类型的字段设置不同的默认宽度
+        let defaultWidth = 120;
+        if (field.fieldName === 'deviceId' || field.fieldName === 'name') {
+          defaultWidth = 150;
+        } else if (field.fieldName === 'description') {
+          defaultWidth = 200;
+        } else if (field.fieldType === 'number') {
+          defaultWidth = 80;
+        } else if (field.fieldType === 'textarea') {
+          defaultWidth = 180;
+        }
+        
+        // 为设备名称和ID列添加点击查看详情功能
+        const columnConfig = {
           title: field.displayName,
           dataIndex: field.fieldName,
           key: field.fieldName,
-        });
+          width: columnWidths[field.fieldName] || defaultWidth,
+          onHeaderCell: handleHeaderCellResize(field.fieldName),
+        };
+        
+        // 设备名称和ID列添加点击效果
+        if (field.fieldName === 'deviceId' || field.fieldName === 'name') {
+          columnConfig.render = (value, record) => (
+            <a 
+              onClick={() => handleShowDetail(record)}
+              style={{ 
+                color: '#1890ff', 
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+            >
+              {value || '-'}
+            </a>
+          );
+        }
+        
+        generatedColumns.push(columnConfig);
       }
     });
     
@@ -577,6 +700,8 @@ function DeviceManagement() {
     generatedColumns.push({
       title: '操作',
       key: 'action',
+      width: columnWidths.action || 120,
+      onHeaderCell: handleHeaderCellResize('action'),
       render: (_, record) => (
         <Space size="middle">
           <Button type="primary" icon={<EditOutlined />} onClick={() => showModal(record)} size="small">
@@ -590,7 +715,7 @@ function DeviceManagement() {
     });
     
     return generatedColumns;
-  }, [deviceFields]);
+  }, [deviceFields, columnWidths]);
 
   // 保存字段配置
   const handleSaveFieldConfig = async (values) => {
@@ -629,6 +754,13 @@ function DeviceManagement() {
           <Button icon={<DownloadOutlined />} onClick={handleExport}>导出设备</Button>
           <Button icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>导入设备</Button>
           <Button icon={<SettingOutlined />} onClick={() => setFieldConfigModalVisible(true)}>字段配置</Button>
+          <Button 
+            icon={<UndoOutlined />} 
+            onClick={resetColumnWidths}
+            title="重置列宽"
+          >
+            重置列宽
+          </Button>
           <Button 
             type="primary" 
             danger={false} 
@@ -711,31 +843,22 @@ function DeviceManagement() {
 
 
         <Table
-          columns={[
-            {
-              title: (
-                <Checkbox
-                  checked={selectAll && devices.length > 0}
-                  onChange={handleSelectAll}
-                  indeterminate={selectedDevices.length > 0 && selectedDevices.length < devices.length}
-                />
-              ),
-              key: 'selection',
-              width: 60,
-              render: (_, record) => (
-                <Checkbox
-                  checked={selectedDevices.includes(record.deviceId)}
-                  onChange={() => handleDeviceSelect(record.deviceId)}
-                />
-              )
+          components={{
+            header: {
+              cell: ResizeableTitle,
             },
-            ...columns
-          ]}
+          }}
+          columns={columns}
           dataSource={devices}
           rowKey="deviceId"
           loading={loading}
           pagination={pagination}
           onChange={handleTableChange}
+          scroll={{ x: 'max-content' }}
+          rowSelection={{
+            selectedRowKeys: selectedDevices,
+            onChange: setSelectedDevices,
+          }}
         />
       </Card>
 
@@ -744,7 +867,7 @@ function DeviceManagement() {
         open={modalVisible}
         onCancel={handleCancel}
         footer={null}
-        width={800}
+        width={700}
       >
         <Form
           form={form}
@@ -786,17 +909,15 @@ function DeviceManagement() {
                     </Select>
                   );
                 } else {
-                  // 其他select类型字段改为使用复选框组支持多选
+                  // 设备类型等使用单选select
                   control = (
-                    <Checkbox.Group placeholder={`请选择${field.displayName}`}>
-                      <Space direction="vertical">
-                        {field.options && field.options.map(option => (
-                          <Checkbox key={option.value} value={option.value}>
-                            {option.label}
-                          </Checkbox>
-                        ))}
-                      </Space>
-                    </Checkbox.Group>
+                    <Select placeholder={`请选择${field.displayName}`}>
+                      {field.options && field.options.map(option => (
+                        <Option key={option.value} value={option.value}>
+                          {option.label}
+                        </Option>
+                      ))}
+                    </Select>
                   );
                 }
                 break;
@@ -983,6 +1104,127 @@ function DeviceManagement() {
                 </Button>
               </div>
             )}
+          </div>
+        )}
+      </Modal>
+
+      {/* 设备详情模态框 */}
+      <Modal
+        title="设备详情"
+        open={detailModalVisible}
+        onCancel={() => {
+          setDetailModalVisible(false);
+          setSelectedDevice(null);
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setDetailModalVisible(false);
+            setSelectedDevice(null);
+          }}>
+            关闭
+          </Button>,
+          <Button key="edit" type="primary" onClick={() => {
+            setDetailModalVisible(false);
+            showModal(selectedDevice);
+          }}>
+            编辑
+          </Button>
+        ]}
+        width={800}
+        destroyOnClose
+      >
+        {selectedDevice && (
+          <div>
+            {/* 基本信息区域 */}
+            <Card size="small" title="基本信息">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>设备ID：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.deviceId || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>设备名称：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.name || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>设备类型：</label>
+                  <span style={{ marginLeft: 8 }}>
+                    {selectedDevice.type ? (
+                      <Space>
+                        {getDeviceTypeIcon(selectedDevice.type)}
+                        <span>{typeMap[selectedDevice.type] || selectedDevice.type}</span>
+                      </Space>
+                    ) : '-'}
+                  </span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>型号：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.model || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>序列号：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.serialNumber || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>IP地址：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.ipAddress || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>所在机房：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.Rack?.Room?.name || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>所在机柜：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.Rack?.name || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>位置：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.position || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>高度(U)：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.height || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>功率(W)：</label>
+                  <span style={{ marginLeft: 8 }}>{selectedDevice.power || '-'}</span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>状态：</label>
+                  <span style={{ 
+                    marginLeft: 8, 
+                    color: selectedDevice.status ? statusMap[selectedDevice.status]?.color : '#666',
+                    fontWeight: 'bold'
+                  }}>
+                    {selectedDevice.status ? statusMap[selectedDevice.status]?.text || selectedDevice.status : '-'}
+                  </span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>购买日期：</label>
+                  <span style={{ marginLeft: 8 }}>
+                    {selectedDevice.purchaseDate ? new Date(selectedDevice.purchaseDate).toLocaleDateString('zh-CN') : '-'}
+                  </span>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>保修到期：</label>
+                  <span style={{ 
+                    marginLeft: 8, 
+                    color: selectedDevice.warrantyExpiry && new Date(selectedDevice.warrantyExpiry) < new Date() ? '#d93025' : '#666',
+                    fontWeight: selectedDevice.warrantyExpiry && new Date(selectedDevice.warrantyExpiry) < new Date() ? 'bold' : 'normal'
+                  }}>
+                    {selectedDevice.warrantyExpiry ? new Date(selectedDevice.warrantyExpiry).toLocaleDateString('zh-CN') : '-'}
+                  </span>
+                </div>
+              </div>
+              {selectedDevice.description && (
+                <div style={{ marginTop: 16 }}>
+                  <label style={{ fontWeight: 'bold', color: '#666' }}>描述：</label>
+                  <div style={{ marginTop: 8, padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+                    {selectedDevice.description}
+                  </div>
+                </div>
+              )}
+            </Card>
           </div>
         )}
       </Modal>
