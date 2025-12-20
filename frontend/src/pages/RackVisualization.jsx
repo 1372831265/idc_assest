@@ -23,12 +23,56 @@ style.textContent = `
   @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translateY(-50%) translateX(20px);
+      transform: translateY(-50%) translateX(20px) scale(0.95);
     }
     to {
       opacity: 1;
-      transform: translateY(-50%) translateX(0);
+      transform: translateY(-50%) translateX(0) scale(1);
     }
+  }
+  
+  /* 强制设备详情面板在最顶层，超越所有3D空间 */
+  .device-detail-panel {
+    z-index: 2147483647 !important; /* 使用最大z-index值 */
+    position: fixed !important;
+    transform: translateY(-50%) !important; /* 强制2D变换 */
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+    perspective: none !important;
+    transform-style: flat !important;
+    isolation: isolate !important;
+    will-change: transform !important;
+    contain: layout style paint !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    /* 强制独立层 */
+    -webkit-transform: translateY(-50%) !important;
+    -moz-transform: translateY(-50%) !important;
+    -ms-transform: translateY(-50%) !important;
+    -o-transform: translateY(-50%) !important;
+    /* 强制最高优先级 */
+    filter: drop-shadow(0 0 0 transparent) !important;
+    box-sizing: border-box !important;
+    max-width: none !important;
+    min-width: auto !important;
+  }
+  
+  /* 防止页面3D空间影响设备详情面板 */
+  .rack-visualization-container {
+    perspective: none !important;
+    transform-style: flat !important;
+    contain: layout !important;
+    overflow: hidden !important;
+  }
+  
+  /* 确保页面所有元素都不会覆盖设备详情面板 */
+  html, body {
+    overflow-x: hidden !important;
+  }
+  
+  /* 强制提升页面所有容器的层级 */
+  .ant-layout, .ant-card, .ant-card-head, .ant-card-body {
+    contain: none !important;
   }
 `;
 document.head.appendChild(style);
@@ -98,6 +142,9 @@ function RackVisualization() {
   const [error, setError] = useState(null);
   const [hoveredDevice, setHoveredDevice] = useState(null);
   const [hoverTimeout, setHoverTimeout] = useState(null);
+  const [backgroundImage, setBackgroundImage] = useState(null);
+  const [backgroundType, setBackgroundType] = useState('gradient'); // gradient or image
+  const [backgroundSize, setBackgroundSize] = useState('contain'); // cover, contain, auto
 
   // 获取所有机柜
   const fetchRacks = async () => {
@@ -416,107 +463,93 @@ function RackVisualization() {
     return marks;
   };
 
-  // 生成左侧U数标记（从实际范围开始显示）
+  // 生成左侧U数标记（从U1开始显示）
   const generateLeftUMarks = (height) => {
     const marks = [];
     const uHeight = 18;
+    const rackContentHeight = height * uHeight; // 机柜内容总高度
+    const containerPadding = 6; // 前面板上下padding总和
     
-    // 从实际U位范围开始（通常是4-42U或类似范围）
-    const startU = Math.max(1, height - 40); // 假设机柜有40U左右，从较高位置开始显示
-    
-    for (let i = 1; i <= height; i++) {
-      const actualU = startU + i - 1;
-      if (actualU <= 42) { // 只显示到42U
-        marks.push(
-          <div key={`left-${i}`}>
-            {/* U位网格背景 */}
-            <div 
-              style={{
-                position: 'absolute',
-                top: `${(height - i) * uHeight}px`,
-                left: '0',
-                width: '25px',
-                height: `${uHeight}px`,
-                backgroundColor: i % 2 === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.05)',
-                borderRight: '1px solid #555'
-              }}
-            />
-            {/* U位序号 */}
-            <div 
-              style={{
-                position: 'absolute',
-                top: `${(height - i) * uHeight + 1}px`,
-                left: '0',
-                width: '25px',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: i % 5 === 0 ? '#00ff88' : '#ccc',
-                fontSize: '10px',
-                fontWeight: i % 5 === 0 ? 'bold' : 'normal',
-                textShadow: '1px 1px 1px rgba(0,0,0,0.8)',
-                zIndex: 2
-              }}
-            >
-              {actualU}
-            </div>
+    for (let u = 1; u <= height; u++) {
+      // 计算从上到下的位置，考虑前面板的padding
+      // U1在最底部，所以从底部开始计算
+      const bottomToTop = (u - 1) * uHeight;
+      const topPosition = rackContentHeight - bottomToTop - uHeight + containerPadding / 2;
+      
+      marks.push(
+        <div key={`left-${u}`}>
+          {/* U位序号 */}
+          <div 
+            style={{
+              position: 'absolute',
+              top: `${topPosition}px`,
+              left: '0',
+              width: '30px',
+              height: `${uHeight}px`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: u % 5 === 0 ? '#ff4757' : '#ff9500', // 亮红色和亮橙色
+              fontSize: '11px',
+              fontWeight: u % 5 === 0 ? 'bold' : 'normal',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(255,255,255,0.3)',
+              zIndex: 30, // 提高z-index确保在前面板之上
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              borderRadius: '3px',
+              border: '1px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}
+          >
+            {u}
           </div>
-        );
-      }
+        </div>
+      );
     }
     
     return marks;
   };
 
-  // 生成右侧U数标记（从实际范围开始显示）
+  // 生成右侧U数标记（从U1开始显示）
   const generateRightUMarks = (height) => {
     const marks = [];
     const uHeight = 18;
+    const rackContentHeight = height * uHeight; // 机柜内容总高度
+    const containerPadding = 6; // 前面板上下padding总和
     
-    // 从实际U位范围开始（通常是4-42U或类似范围）
-    const startU = Math.max(1, height - 40); // 假设机柜有40U左右，从较高位置开始显示
-    
-    for (let i = 1; i <= height; i++) {
-      const actualU = startU + i - 1;
-      if (actualU <= 42) { // 只显示到42U
-        marks.push(
-          <div key={`right-${i}`}>
-            {/* U位网格背景 */}
-            <div 
-              style={{
-                position: 'absolute',
-                top: `${(height - i) * uHeight}px`,
-                right: '0',
-                width: '25px',
-                height: `${uHeight}px`,
-                backgroundColor: i % 2 === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.05)',
-                borderLeft: '1px solid #555'
-              }}
-            />
-            {/* U位序号 */}
-            <div 
-              style={{
-                position: 'absolute',
-                top: `${(height - i) * uHeight + 1}px`,
-                right: '0',
-                width: '25px',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: i % 5 === 0 ? '#00ff88' : '#ccc',
-                fontSize: '10px',
-                fontWeight: i % 5 === 0 ? 'bold' : 'normal',
-                textShadow: '1px 1px 1px rgba(0,0,0,0.8)',
-                zIndex: 2
-              }}
-            >
-              {actualU}
-            </div>
+    for (let u = 1; u <= height; u++) {
+      // 计算从上到下的位置，考虑前面板的padding
+      // U1在最底部，所以从底部开始计算
+      const bottomToTop = (u - 1) * uHeight;
+      const topPosition = rackContentHeight - bottomToTop - uHeight + containerPadding / 2;
+      
+      marks.push(
+        <div key={`right-${u}`}>
+          {/* U位序号 */}
+          <div 
+            style={{
+              position: 'absolute',
+              top: `${topPosition}px`,
+              right: '0',
+              width: '30px',
+              height: `${uHeight}px`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: u % 5 === 0 ? '#ff4757' : '#ff9500', // 亮红色和亮橙色
+              fontSize: '11px',
+              fontWeight: u % 5 === 0 ? 'bold' : 'normal',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(255,255,255,0.3)',
+              zIndex: 30, // 提高z-index确保在前面板之上
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              borderRadius: '3px',
+              border: '1px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}
+          >
+            {u}
           </div>
-        );
-      }
+        </div>
+      );
     }
     
     return marks;
@@ -655,6 +688,59 @@ function RackVisualization() {
             <Button icon={<ZoomInOutlined />} onClick={handleZoomIn}>放大</Button>
             <Button icon={<ZoomOutOutlined />} onClick={handleZoomOut}>缩小</Button>
             <Button icon={<RotateRightOutlined />} onClick={handleResetView}>重置视角</Button>
+            <Select
+              placeholder="选择背景类型"
+              style={{ width: 150 }}
+              value={backgroundType}
+              onChange={setBackgroundType}
+            >
+              <Option value="gradient">渐变背景</Option>
+              <Option value="image">自定义图片</Option>
+            </Select>
+            {backgroundType === 'image' && (
+              <Space>
+                <input
+                  type="text"
+                  placeholder="输入图片URL"
+                  style={{ width: 200, padding: '4px 8px', borderRadius: '4px', border: '1px solid #d9d9d9' }}
+                  onChange={(e) => setBackgroundImage(e.target.value)}
+                  value={backgroundImage || ''}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setBackgroundImage(event.target.result);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                  id="backgroundFileInput"
+                />
+                <Button onClick={() => document.getElementById('backgroundFileInput').click()}>上传图片</Button>
+                <Select
+                  placeholder="图片大小"
+                  style={{ width: 100 }}
+                  value={backgroundSize}
+                  onChange={setBackgroundSize}
+                >
+                  <Option value="contain">自适应</Option>
+                  <Option value="cover">覆盖</Option>
+                  <Option value="auto">原始大小</Option>
+                </Select>
+                {backgroundImage && (
+                  <Button onClick={() => {
+                    setBackgroundImage(null);
+                    setBackgroundType('gradient');
+                  }}>清除</Button>
+                )}
+              </Space>
+            )}
           </Space>
         </div>
         
@@ -673,17 +759,32 @@ function RackVisualization() {
                       加载机柜数据中...
                     </div>
                   ) : selectedRack ? (
-                    <div style={{ 
-                      width: '100%', 
-                      height: '600px',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      perspective: '1000px',
-                      overflow: 'auto',
-                      backgroundColor: '#f5f5f5',
-                      position: 'relative' // 为设备详情面板定位
-                    }}>
+                    <div 
+                      className="rack-visualization-container"
+                      style={{ 
+                        width: '100%',
+                        height: 'calc(100vh - 200px)',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        perspective: '1000px',
+                        overflow: 'hidden',
+                        backgroundColor: '#f0f2f5',
+                        background: backgroundType === 'image' && backgroundImage 
+                          ? `url(${backgroundImage})`
+                          : 'linear-gradient(135deg, #ff0000 0%, #ff7f00 14%, #ffff00 28%, #00ff00 42%, #0000ff 57%, #4b0082 71%, #8b00ff 100%)',
+                        backgroundSize: backgroundType === 'image' ? backgroundSize : 'auto',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                        position: 'relative',
+                        borderRadius: '8px',
+                        border: '1px solid #e8e8e8',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        transition: 'all 0.3s ease',
+                        padding: '20px',
+                        boxSizing: 'border-box',
+                        flexShrink: 0
+                      }}>
               {loadingDevices && (
                 <div style={{ 
                   position: 'absolute', 
@@ -707,7 +808,10 @@ function RackVisualization() {
                 style={{
                   transform: `scale(${zoom}) rotateY(${rotation}deg)`,
                   transition: 'transform 0.3s ease',
-                  transformStyle: 'preserve-3d'
+                  transformStyle: 'preserve-3d',
+                  position: 'relative',
+                  padding: '40px 50px', // 为U数标记预留空间
+                  willChange: 'transform' // 优化性能
                 }}
               >
                 {/* 机柜主体 */}
@@ -720,8 +824,34 @@ function RackVisualization() {
                   borderRadius: '8px',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
                   transformStyle: 'preserve-3d',
-                  overflow: 'hidden'
+                  overflow: 'visible'
                 }}>
+                  {/* 左侧U数标记 */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '-35px',
+                    top: '0',
+                    width: '35px',
+                    height: '100%',
+                    zIndex: 20,
+                    pointerEvents: 'none' // 确保不干扰鼠标事件
+                  }}>
+                    {generateLeftUMarks(selectedRack.height)}
+                  </div>
+                  
+                  {/* 右侧U数标记 */}
+                  <div style={{
+                    position: 'absolute',
+                    right: '-35px',
+                    top: '0',
+                    width: '35px',
+                    height: '100%',
+                    zIndex: 20,
+                    pointerEvents: 'none' // 确保不干扰鼠标事件
+                  }}>
+                    {generateRightUMarks(selectedRack.height)}
+                  </div>
+                  
                   {/* 前面板 */}
                   <div style={{
                     position: 'absolute',
@@ -740,32 +870,7 @@ function RackVisualization() {
                     border: '1px solid rgba(255,255,255,0.1)',
                     overflow: 'visible'
                   }}>
-                    {/* 左侧U数标记 */}
-                    <div style={{
-                      position: 'absolute',
-                      left: '-25px',
-                      top: '0',
-                      width: '25px',
-                      height: '100%',
-                      zIndex: 10
-                    }}>
-                      {generateLeftUMarks(selectedRack.height)}
-                    </div>
-                    
-                    {/* 右侧U数标记 */}
-                    <div style={{
-                      position: 'absolute',
-                      right: '-25px',
-                      top: '0',
-                      width: '25px',
-                      height: '100%',
-                      zIndex: 10
-                    }}>
-                      {generateRightUMarks(selectedRack.height)}
-                    </div>
-                    
-                    {/* 原有的U数标记（内部） */}
-                    {generateUMarks(selectedRack.height)}
+                    {/* 移除了内侧U数标记，因为外侧已有U数显示 */}
                     
                     {/* 设备 */}
                     {/* 调试信息 */}
@@ -1058,20 +1163,38 @@ function RackVisualization() {
                 {/* 设备详情面板 */}
                 {hoveredDevice && (
                   <div 
+                    className="device-detail-panel"
                     style={{
-                      position: 'fixed', // 使用 fixed 定位确保相对于视口
+                      position: 'fixed !important', // 强制fixed定位
                       right: '20px',
                       top: '50%',
-                      transform: 'translateY(-50%)',
+                      transform: 'translateY(-50%) !important', // 强制2D变换
                       width: '320px',
                       backgroundColor: '#fff',
                       borderRadius: '8px',
                       boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
                       padding: '20px',
                       border: '1px solid #e8e8e8',
-                      zIndex: 10000, // 提高 z-index 确保在最上层
                       animation: 'slideIn 0.3s ease-out',
-                      pointerEvents: 'auto' // 确保面板可以接收鼠标事件
+                      pointerEvents: 'auto',
+                      willChange: 'transform',
+                      isolation: 'isolate',
+                      backfaceVisibility: 'hidden',
+                      // 强制最高优先级
+                      zIndex: 2147483647,
+                      perspective: 'none',
+                      transformStyle: 'flat',
+                      contain: 'layout style paint',
+                      overflow: 'visible',
+                      filter: 'drop-shadow(0 0 0 transparent)',
+                      boxSizing: 'border-box',
+                      maxWidth: 'none',
+                      minWidth: 'auto',
+                      // 强制独立层
+                      WebkitTransform: 'translateY(-50%)',
+                      MozTransform: 'translateY(-50%)',
+                      msTransform: 'translateY(-50%)',
+                      OTransform: 'translateY(-50%)'
                     }}
                     key={`panel-${hoveredDevice._key || hoveredDevice.deviceId || hoveredDevice.id || 'unknown'}`}
                     onMouseEnter={(e) => {
