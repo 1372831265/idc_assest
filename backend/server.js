@@ -5,7 +5,7 @@ const { sequelize } = require('./db');
 
 // 创建Express应用
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8000;
 
 // 中间件
 app.use(cors());

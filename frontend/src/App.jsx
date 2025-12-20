@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Layout, Menu, theme, Button } from 'antd';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined, MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
+import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined, MenuUnfoldOutlined, MenuFoldOutlined, EyeOutlined } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import DeviceManagement from './pages/DeviceManagement';
 import RackManagement from './pages/RackManagement';
 import RoomManagement from './pages/RoomManagement';
 import DeviceFieldManagement from './pages/DeviceFieldManagement';
+import RackVisualization from './pages/RackVisualization';
 
 
 const { Content, Sider } = Layout;
@@ -87,6 +88,11 @@ function App() {
                   icon: <BarChartOutlined />,
                   label: <Link to="/fields">字段管理</Link>,
                 },
+                {
+                  key: '6',
+                  icon: <EyeOutlined />,
+                  label: <Link to="/visualization">机柜可视化</Link>,
+                },
               ]}
             />
           </Sider>
@@ -106,6 +112,7 @@ function App() {
               <Route path="/racks" element={<RackManagement />} />
               <Route path="/rooms" element={<RoomManagement />} />
               <Route path="/fields" element={<DeviceFieldManagement />} />
+              <Route path="/visualization" element={<RackVisualization />} />
             </Routes>
           </Content>
         </Layout>

@@ -14,7 +14,7 @@ const DeviceField = require('../models/DeviceField');
 // 获取所有设备（支持搜索和筛选）
 router.get('/', async (req, res) => {
   try {
-    const { keyword, status, type, page = 1, pageSize = 10 } = req.query;
+    const { keyword, status, type, rackId, page = 1, pageSize = 10 } = req.query;
     const offset = (page - 1) * pageSize;
     
     // 构建查询条件
@@ -42,6 +42,11 @@ router.get('/', async (req, res) => {
     // 分类筛选
     if (type && type !== 'all') {
       where.type = type;
+    }
+    
+    // 机柜筛选（用于机柜可视化功能）
+    if (rackId) {
+      where.rackId = rackId;
     }
     
     // 执行查询
