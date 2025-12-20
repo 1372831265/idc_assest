@@ -89,6 +89,7 @@ class ErrorBoundary extends React.Component {
 function RackVisualization() {
   const [racks, setRacks] = useState([]);
   const [selectedRack, setSelectedRack] = useState(null);
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [devices, setDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
@@ -115,10 +116,20 @@ function RackVisualization() {
       
       setRacks(validRacks);
       if (validRacks.length > 0) {
-        setSelectedRack(validRacks[0]);
-        fetchDevices(validRacks[0].rackId);
+        // 自动选择第一个机柜
+        const firstRack = validRacks[0];
+        setSelectedRack(firstRack);
+        
+        // 设置对应的机房
+        if (firstRack?.Room) {
+          const roomKey = firstRack.Room.roomId || firstRack.Room.id || firstRack.Room.name;
+          setSelectedRoom(roomKey);
+        }
+        
+        fetchDevices(firstRack.rackId);
       } else {
         setSelectedRack(null);
+        setSelectedRoom(null);
         setDevices([]);
         message.warning('未找到有效的机柜数据');
       }
@@ -511,6 +522,52 @@ function RackVisualization() {
     return marks;
   };
 
+  // 获取机房列表
+  const getRooms = () => {
+    const roomMap = new Map();
+    racks.forEach(rack => {
+      if (rack?.Room) {
+        const roomKey = rack.Room.roomId || rack.Room.id || rack.Room.name;
+        if (!roomMap.has(roomKey)) {
+          roomMap.set(roomKey, {
+            ...rack.Room,
+            key: roomKey
+          });
+        }
+      }
+    });
+    return Array.from(roomMap.values());
+  };
+
+  // 获取指定机房下的机柜
+  const getRacksByRoom = (roomId) => {
+    return racks.filter(rack => {
+      const rackRoomId = rack?.Room?.roomId || rack?.Room?.id;
+      return rackRoomId === roomId;
+    });
+  };
+
+  // 选择机房
+  const handleRoomChange = (roomId) => {
+    console.log('选择机房:', roomId);
+    setSelectedRoom(roomId);
+    
+    // 重置机柜选择
+    setSelectedRack(null);
+    setDevices([]);
+    
+    // 如果选择了机房，获取该机房下的机柜
+    if (roomId) {
+      const roomRacks = getRacksByRoom(roomId);
+      if (roomRacks.length > 0) {
+        // 自动选择第一个机柜
+        const firstRack = roomRacks[0];
+        setSelectedRack(firstRack);
+        fetchDevices(firstRack.rackId);
+      }
+    }
+  };
+
   // 选择机柜
   const handleRackChange = (rackId) => {
     const rack = racks.find(r => r.rackId === rackId);
@@ -553,16 +610,32 @@ function RackVisualization() {
         extra={
           <Space>
             <Select
+              placeholder="选择机房"
+              style={{ width: 180 }}
+              value={selectedRoom}
+              onChange={handleRoomChange}
+              loading={loading}
+              disabled={loading}
+              allowClear
+            >
+              {getRooms().map(room => (
+                <Option key={room.key} value={room.key}>
+                  {room.name || '未知机房'} ({room.roomId || room.id || '无ID'})
+                </Option>
+              ))}
+            </Select>
+            <Select
               placeholder="选择机柜"
               style={{ width: 200 }}
               value={selectedRack?.rackId}
               onChange={handleRackChange}
-              loading={loading}
-              disabled={loading}
+              loading={loading || loadingDevices}
+              disabled={!selectedRoom || loading}
+              allowClear
             >
-              {racks.map(rack => (
+              {selectedRoom && getRacksByRoom(selectedRoom).map(rack => (
                 <Option key={rack?.rackId || `rack-${Math.random()}`} value={rack?.rackId}>
-                  {rack?.Room?.name || '未知机房'} - {rack?.name || '未知机柜'} ({rack?.rackId || '无ID'}) - {rack?.height || 0}U
+                  {rack?.name || '未知机柜'} ({rack?.rackId || '无ID'}) - {rack?.height || 0}U
                 </Option>
               ))}
             </Select>
@@ -577,11 +650,13 @@ function RackVisualization() {
           </Space>
         }  
       >
-        <Space style={{ marginBottom: 16 }}>
-          <Button icon={<ZoomInOutlined />} onClick={handleZoomIn}>放大</Button>
-          <Button icon={<ZoomOutOutlined />} onClick={handleZoomOut}>缩小</Button>
-          <Button icon={<RotateRightOutlined />} onClick={handleResetView}>重置视角</Button>
-        </Space>
+        <div style={{ marginBottom: 16 }}>
+          <Space wrap>
+            <Button icon={<ZoomInOutlined />} onClick={handleZoomIn}>放大</Button>
+            <Button icon={<ZoomOutOutlined />} onClick={handleZoomOut}>缩小</Button>
+            <Button icon={<RotateRightOutlined />} onClick={handleResetView}>重置视角</Button>
+          </Space>
+        </div>
         
         <ErrorBoundary>
                   {loading ? (
