@@ -152,10 +152,13 @@ function RackVisualization() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get('/api/racks');
+      // 为机柜可视化页面传递较大的pageSize以获取所有机柜
+      const response = await axios.get('/api/racks', { params: { pageSize: 1000 } });
       
       // 验证数据结构并过滤有效机柜
-      const validRacks = response.data.filter(rack => 
+      // 机柜API返回的是包含total和racks数组的对象
+      const racksArray = response.data.racks || [];
+      const validRacks = racksArray.filter(rack => 
         rack && 
         typeof rack === 'object' && 
         rack.rackId && 
@@ -439,7 +442,7 @@ function RackVisualization() {
           key={i} 
           className="u-mark"
           style={{
-            top: `${(height - i) * uHeight + 1}px`,
+            top: `${(height - i) * uHeight}px`,
             height: '1px',
             backgroundColor: i % 5 === 0 ? '#1890ff' : '#999',
             width: '100%',
@@ -469,14 +472,11 @@ function RackVisualization() {
   const generateLeftUMarks = (height) => {
     const marks = [];
     const uHeight = 18;
-    const rackContentHeight = height * uHeight; // 机柜内容总高度
-    const containerPadding = 6; // 前面板上下padding总和
     
     for (let u = 1; u <= height; u++) {
-      // 计算从上到下的位置，考虑前面板的padding
-      // U1在最底部，所以从底部开始计算
-      const bottomToTop = (u - 1) * uHeight;
-      const topPosition = rackContentHeight - bottomToTop - uHeight + containerPadding / 2;
+      // 使用与设备位置计算一致的逻辑
+      // U1在最底部，计算U位标记的顶部位置（从机柜顶部算起）
+      const topPosition = (height - u) * uHeight;
       
       marks.push(
         <div key={`left-${u}`}>
@@ -515,14 +515,11 @@ function RackVisualization() {
   const generateRightUMarks = (height) => {
     const marks = [];
     const uHeight = 18;
-    const rackContentHeight = height * uHeight; // 机柜内容总高度
-    const containerPadding = 6; // 前面板上下padding总和
     
     for (let u = 1; u <= height; u++) {
-      // 计算从上到下的位置，考虑前面板的padding
-      // U1在最底部，所以从底部开始计算
-      const bottomToTop = (u - 1) * uHeight;
-      const topPosition = rackContentHeight - bottomToTop - uHeight + containerPadding / 2;
+      // 使用与设备位置计算一致的逻辑
+      // U1在最底部，计算U位标记的顶部位置（从机柜顶部算起）
+      const topPosition = (height - u) * uHeight;
       
       marks.push(
         <div key={`right-${u}`}>
@@ -834,7 +831,7 @@ function RackVisualization() {
                         backgroundColor: '#f0f2f5',
                         background: backgroundType === 'image' && backgroundImage 
                           ? `url(${backgroundImage})`
-                          : 'linear-gradient(135deg, #ff0000 0%, #ff7f00 14%, #ffff00 28%, #00ff00 42%, #0000ff 57%, #4b0082 71%, #8b00ff 100%)',
+                          : 'linear-gradient(135deg, #ffcccc 0%, #ffd6b3 14%, #ffffcc 28%, #ccffcc 42%, #cce6ff 57%, #d6ccff 71%, #e6ccff 100%)',
                         backgroundSize: backgroundType === 'image' ? backgroundSize : 'auto',
                         backgroundPosition: 'center',
                         backgroundRepeat: 'no-repeat',

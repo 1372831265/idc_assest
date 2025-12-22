@@ -195,7 +195,8 @@ function DeviceManagement() {
   const fetchRacks = async () => {
     try {
       const response = await axios.get('/api/racks');
-      setRacks(response.data);
+      // 现在API返回的格式是 { racks: [], total: number }
+      setRacks(response.data.racks || []);
     } catch (error) {
       message.error('获取机柜列表失败');
       console.error('获取机柜列表失败:', error);
@@ -1006,7 +1007,7 @@ function DeviceManagement() {
         }}
         footer={null}
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         {!isImporting && !importResult ? (
           <div>
@@ -1131,7 +1132,7 @@ function DeviceManagement() {
           </Button>
         ]}
         width={800}
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedDevice && (
           <div>

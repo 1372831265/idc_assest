@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, message, Card, Space, InputNumber, Upload, Progress } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 const { Option } = Select;
 
@@ -12,15 +13,38 @@ function RackManagement() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRack, setEditingRack] = useState(null);
   const [form] = Form.useForm();
+  // 分页状态
+  const [pagination, setPagination] = useState({ 
+    current: 1, 
+    pageSize: 10, 
+    total: 0,
+    pageSizeOptions: ['10', '20', '30', '50', '100'],
+    showSizeChanger: true,
+    showTotal: (total) => `共 ${total} 条记录`
+  });
+  // 导入模态框状态
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
 
 
   // 获取所有机柜
-  const fetchRacks = async () => {
+  const fetchRacks = async (page = 1, pageSize = 10) => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/racks');
-      setRacks(response.data);
+      const response = await axios.get('/api/racks', {
+        params: {
+          page,
+          pageSize
+        }
+      });
+      // 假设API返回格式为 { racks: [], total: number }
+      const { racks: data, total } = response.data;
+      setRacks(data);
+      // 更新分页状态
+      setPagination(prev => ({ ...prev, current: page, pageSize, total }));
     } catch (error) {
       message.error('获取机柜列表失败');
       console.error('获取机柜列表失败:', error);
@@ -40,8 +64,13 @@ function RackManagement() {
     }
   };
 
+  // 处理表格分页变化
+  const handleTableChange = (pagination) => {
+    fetchRacks(pagination.current, pagination.pageSize);
+  };
+
   useEffect(() => {
-    fetchRacks();
+    fetchRacks(pagination.current, pagination.pageSize);
     fetchRooms();
   }, []);
 
@@ -105,11 +134,86 @@ function RackManagement() {
     });
   };
 
+  // 下载导入模板
+  const handleDownloadTemplate = () => {
+    // 调用后端API下载模板
+    window.open('/api/racks/import-template', '_blank');
+    message.success('模板下载成功');
+  };
 
-
-
-
-
+  // 导入机柜数据
+  const handleImport = async (file) => {
+    try {
+      setIsImporting(true);
+      setImportProgress(0);
+      setImportResult(null);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // 模拟进度
+      const progressInterval = setInterval(() => {
+        setImportProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 10;
+        });
+      }, 500);
+      
+      // 发送文件到后端处理
+      const response = await axios.post('/api/racks/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      clearInterval(progressInterval);
+      setImportProgress(100);
+      setImportResult(response.data);
+      setIsImporting(false);
+      
+      // 根据导入结果显示不同的消息
+      if (response.data.success) {
+        const { imported, duplicates, total } = response.data;
+        if (duplicates > 0) {
+          message.warning(`导入完成，但有 ${duplicates} 条重复记录被跳过`);
+        } else {
+          message.success('所有记录导入成功');
+        }
+      } else {
+        message.error(response.data.message || '导入失败');
+      }
+      
+      // 阻止自动上传
+      return false;
+    } catch (error) {
+      setIsImporting(false);
+      
+      let errorMessage = '机柜导入失败';
+      let errorDetails = null;
+      
+      if (error.response) {
+        // 服务器返回了错误响应
+        errorMessage = error.response.data.message || error.response.data.error || errorMessage;
+        errorDetails = error.response.data.details;
+      } else if (error.request) {
+        // 请求已发送但没有收到响应
+        errorMessage = '网络错误，服务器没有响应';
+      } else {
+        // 请求配置错误
+        errorMessage = `请求错误: ${error.message}`;
+      }
+      
+      setImportResult({ success: false, message: errorMessage, details: errorDetails });
+      message.error(errorMessage);
+      console.error('机柜导入失败:', error);
+      
+      // 阻止自动上传
+      return false;
+    }
+  };
 
   // 状态标签映射
   const statusMap = {
@@ -195,6 +299,9 @@ function RackManagement() {
           <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
             添加机柜
           </Button>
+          <Button icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>
+            导入机柜
+          </Button>
         </Space>
       }>
         <Table
@@ -202,7 +309,9 @@ function RackManagement() {
           dataSource={racks}
           rowKey="rackId"
           loading={loading}
-          pagination={{ pageSize: 10 }}
+          pagination={pagination}
+          onChange={handleTableChange}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
@@ -287,6 +396,98 @@ function RackManagement() {
         </Form>
       </Modal>
 
+      {/* 导入机柜模态框 */}
+      <Modal
+        title="导入机柜"
+        open={importModalVisible}
+        onCancel={() => {
+          setImportModalVisible(false);
+          setImportProgress(0);
+          setImportResult(null);
+          setIsImporting(false);
+        }}
+        footer={null}
+        width={600}
+        destroyOnClose
+      >
+        {!isImporting && !importResult ? (
+          <div>
+            <p>请上传XLSX格式的机柜数据文件</p>
+            <p style={{ color: '#999', fontSize: '12px', marginBottom: 20 }}>支持的编码格式：UTF-8</p>
+            
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontWeight: 'bold', marginBottom: 8 }}>Excel文件格式要求：</p>
+              <ul style={{ paddingLeft: 20, marginBottom: 10 }}>
+                <li>必填字段：机柜ID、机柜名称、所属机房名称、高度(U)、最大功率(W)、状态</li>
+                <li>状态值：active(在用)、maintenance(维护中)、inactive(停用)</li>
+                <li>高度和功率必须是数字格式</li>
+              </ul>
+            </div>
+            
+            <div style={{ marginBottom: 20 }}>
+              <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate} style={{ marginRight: 10 }}>
+                下载导入模板
+              </Button>
+              <span style={{ color: '#999', fontSize: '12px' }}>包含示例数据的XLSX模板文件</span>
+            </div>
+            
+            <Upload
+              name="file"
+              accept=".xlsx, .xls"
+              showUploadList={false}
+              beforeUpload={handleImport}
+              maxCount={1}
+            >
+              <Button type="primary" icon={<UploadOutlined />} block>
+                选择Excel文件
+              </Button>
+            </Upload>
+          </div>
+        ) : (
+          <div>
+            <p>正在导入数据...</p>
+            <Progress percent={importProgress} status="active" style={{ marginBottom: 20 }} />
+            {importResult && (
+              <div>
+                <p style={{ marginBottom: 10 }}>导入完成：</p>
+                <p>总记录数：{importResult.total || 0}</p>
+                <p>成功：{importResult.imported || 0}</p>
+                <p>重复：{importResult.duplicates || 0}</p>
+                {importResult.details && importResult.details.length > 0 && (
+                  <div>
+                    <p style={{ marginTop: 20, fontWeight: 'bold' }}>导入失败记录：</p>
+                    <ul style={{ maxHeight: '300px', overflowY: 'auto', textAlign: 'left' }}>
+                      {importResult.details.map((item, index) => (
+                        <li key={index} style={{ marginBottom: '8px' }}>
+                          <strong>第 {item.row} 行</strong>
+                          <ul style={{ margin: '4px 0 0 20px' }}>
+                            {item.errors.map((err, errIndex) => (
+                              <li key={errIndex} style={{ color: '#ff4d4f' }}>{err}</li>
+                            ))}
+                          </ul>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    setImportModalVisible(false);
+                    setImportProgress(0);
+                    setImportResult(null);
+                    setIsImporting(false);
+                    fetchRacks();
+                  }}
+                  style={{ marginTop: 20 }}
+                >
+                  确定
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
     </div>
   );

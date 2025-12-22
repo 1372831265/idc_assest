@@ -43,8 +43,9 @@ function Dashboard() {
         
         // 获取所有机柜
         const racksRes = await axios.get('/api/racks');
-        const racks = racksRes.data;
-        const totalRacks = racks.length;
+        // 机柜API返回的是包含total和racks数组的对象
+        const totalRacks = racksRes.data.total;
+        const racks = racksRes.data.racks || [];
         
         // 获取所有机房
         const roomsRes = await axios.get('/api/rooms');
