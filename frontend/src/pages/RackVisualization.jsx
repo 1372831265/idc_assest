@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Select, Button, Space, message, Tooltip } from 'antd';
+import { Card, Select, Button, Space, message, Tooltip, Modal, Form, Switch, Checkbox } from 'antd';
 import { 
   ReloadOutlined, 
   ZoomInOutlined, 
-  ZoomOutOutlined, 
+  ZoomOutOutlined,
   RotateRightOutlined,
   CloudServerOutlined,
   SwitcherOutlined,
@@ -78,8 +78,9 @@ style.textContent = `
   
   /* 悬停提亮效果 */
   .device-hover {
-    background: linear-gradient(145deg, #e8f5e8, #d4edda) !important;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.3), 0 0 8px rgba(129, 199, 132, 0.4) !important;
+    background: linear-gradient(145deg, #1e293b, #0f172a) !important;
+    box-shadow: 0 6px 16px rgba(56, 189, 248, 0.3), 0 0 12px rgba(56, 189, 248, 0.2) !important;
+    border-color: #38bdf8 !important;
   }
   
   /* Tooltip样式 */
@@ -97,28 +98,21 @@ style.textContent = `
   
   /* 设备数量badge */
   .device-count-badge {
-    background: linear-gradient(145deg, #a5d6a7, #81c784);
-    color: #2e7d32;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-    box-shadow: 0 2px 6px rgba(129, 199, 132, 0.3);
-    border: 1px solid rgba(129, 199, 132, 0.5);
-    backdrop-filter: blur(4px);
-    transition: all 0.2s ease;
-    white-space: 'nowrap';
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.2));
+    color: #38bdf8;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
   }
-
-  .device-count-badge:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(129, 199, 132, 0.4);
-  }
-  
-
 `;
 document.head.appendChild(style);
-
 // 错误边界组件
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -196,27 +190,55 @@ function RackVisualization() {
   // 设备详情tooltip字段配置
   const [tooltipFields, setTooltipFields] = useState({});
 
+  // 默认设备字段配置
+  const defaultTooltipFields = {
+    name: { label: '设备名称', enabled: true, field: 'name', fieldType: 'string' },
+    deviceId: { label: '设备ID', enabled: true, field: 'deviceId', fieldType: 'string' },
+    type: { label: '设备类型', enabled: true, field: 'type', fieldType: 'string' },
+    brand: { label: '品牌', enabled: true, field: 'brand', fieldType: 'string' },
+    model: { label: '型号', enabled: true, field: 'model', fieldType: 'string' },
+    status: { label: '状态', enabled: true, field: 'status', fieldType: 'string' },
+    position: { label: '位置', enabled: true, field: 'position', fieldType: 'number' },
+    height: { label: '高度', enabled: true, field: 'height', fieldType: 'number' },
+    ipAddress: { label: 'IP地址', enabled: true, field: 'ipAddress', fieldType: 'string' },
+    power: { label: '功率', enabled: true, field: 'power', fieldType: 'number' }
+  };
+
   // 获取设备字段配置
   const fetchTooltipDeviceFields = async () => {
     try {
       setLoadingTooltipFields(true);
+      console.log('开始获取设备字段配置...');
       const response = await axios.get('/api/deviceFields');
-      const sortedFields = response.data.sort((a, b) => a.order - b.order);
-      setTooltipDeviceFields(sortedFields);
+      console.log('API响应:', response.data);
+      const fieldsData = response.data;
+      
+      if (Array.isArray(fieldsData) && fieldsData.length > 0) {
+        console.log('使用API返回的字段配置');
+        const sortedFields = fieldsData.sort((a, b) => a.order - b.order);
+        setTooltipDeviceFields(sortedFields);
 
-      // 根据字段配置初始化tooltipFields
-      const initialFields = {};
-      sortedFields.forEach(field => {
-        initialFields[field.fieldName] = {
-          label: field.displayName,
-          enabled: field.visible,
-          field: field.fieldName,
-          fieldType: field.fieldType
-        };
-      });
-      setTooltipFields(initialFields);
+        // 根据字段配置初始化tooltipFields
+        const initialFields = {};
+        sortedFields.forEach(field => {
+          console.log('字段:', field.fieldName, field.displayName, field.visible);
+          initialFields[field.fieldName] = {
+            label: field.displayName,
+            enabled: field.visible,
+            field: field.fieldName,
+            fieldType: field.fieldType
+          };
+        });
+        setTooltipFields(initialFields);
+      } else {
+        console.log('使用默认字段配置');
+        // 使用默认字段配置
+        setTooltipFields(defaultTooltipFields);
+      }
     } catch (error) {
-      console.error('获取设备字段配置失败:', error);
+      console.error('获取设备字段配置失败，使用默认配置:', error);
+      // 使用默认字段配置
+      setTooltipFields(defaultTooltipFields);
     } finally {
       setLoadingTooltipFields(false);
     }
@@ -226,14 +248,20 @@ function RackVisualization() {
   const saveTooltipConfig = async () => {
     try {
       setSavingTooltipConfig(true);
-      const fieldConfigs = Object.values(tooltipFields).map(field => ({
+      
+      const fieldConfigs = Object.entries(tooltipFields).map(([key, field]) => ({
         fieldName: field.field,
-        visible: field.enabled
+        visible: field.enabled,
+        displayName: field.label,
+        fieldType: field.fieldType
       }));
       
       await axios.post('/api/deviceFields/config', fieldConfigs);
       message.success('字段配置已保存');
       setShowTooltipConfig(false);
+      
+      // 重新获取配置以确保数据一致
+      await fetchTooltipDeviceFields();
     } catch (error) {
       console.error('保存字段配置失败:', error);
       message.error('保存字段配置失败');
@@ -325,9 +353,24 @@ function RackVisualization() {
       console.log('=== 处理后的设备数据 ===');
       console.log('设备数组长度:', devicesData.length);
       console.log('设备数据:', devicesData);
+
+      // 展开customFields中的字段到设备对象的直接属性
+      const processedDevices = devicesData.map(device => {
+        const deviceWithFields = { ...device };
+        
+        if (device.customFields && typeof device.customFields === 'object') {
+          Object.entries(device.customFields).forEach(([fieldName, value]) => {
+            deviceWithFields[fieldName] = value;
+          });
+        }
+        
+        return deviceWithFields;
+      });
+      
+      console.log('展开customFields后的设备数据:', processedDevices);
       
       // 如果没有数据，显示警告
-      if (devicesData.length === 0) {
+      if (processedDevices.length === 0) {
         console.warn('=== 没有找到设备数据 ===');
         console.warn('可能的原因:');
         console.warn('1. 数据库中该机柜确实没有设备');
@@ -340,8 +383,8 @@ function RackVisualization() {
       
       // 显示原始数据结构以供调试
       console.log('=== 数据结构分析 ===');
-      if (devicesData.length > 0) {
-        const firstDevice = devicesData[0];
+      if (processedDevices.length > 0) {
+        const firstDevice = processedDevices[0];
         console.log('第一个设备完整数据:', JSON.stringify(firstDevice, null, 2));
         console.log('第一个设备的字段:', Object.keys(firstDevice));
         console.log('第一个设备的字段类型:');
@@ -351,7 +394,7 @@ function RackVisualization() {
       }
       
       // 过滤有效的设备数据 - 放宽验证条件
-      const validDevices = devicesData.filter(device => {
+      const validDevices = processedDevices.filter(device => {
         if (!device) {
           console.log('跳过空设备');
           return false;
@@ -427,6 +470,14 @@ function RackVisualization() {
     fetchTooltipDeviceFields();
   }, []);
 
+  // 打开字段配置模态框时获取数据
+  const handleOpenTooltipConfig = () => {
+    if (Object.keys(tooltipFields).length === 0) {
+      fetchTooltipDeviceFields();
+    }
+    setShowTooltipConfig(true);
+  };
+
   // 根据设备类型获取图标
   const getDeviceIcon = (deviceType) => {
     try {
@@ -476,6 +527,69 @@ function RackVisualization() {
       null: '#3b82f6'
     };
     return statusColorMap[status] || '#3b82f6';
+  };
+
+  // 获取设备类型对应的颜色主题
+  const getDeviceTypeTheme = (type) => {
+    const themeMap = {
+      'server': {
+        borderColor: '#38bdf8',
+        accentColor: '#0ea5e9',
+        glowColor: 'rgba(56, 189, 248, 0.3)',
+        iconColor: '#38bdf8',
+        label: '服务器'
+      },
+      'switch': {
+        borderColor: '#22c55e',
+        accentColor: '#16a34a',
+        glowColor: 'rgba(34, 197, 94, 0.3)',
+        iconColor: '#22c55e',
+        label: '交换机'
+      },
+      'router': {
+        borderColor: '#f59e0b',
+        accentColor: '#d97706',
+        glowColor: 'rgba(245, 158, 11, 0.3)',
+        iconColor: '#f59e0b',
+        label: '路由器'
+      },
+      'storage': {
+        borderColor: '#8b5cf6',
+        accentColor: '#7c3aed',
+        glowColor: 'rgba(139, 92, 246, 0.3)',
+        iconColor: '#8b5cf6',
+        label: '存储'
+      },
+      'firewall': {
+        borderColor: '#ef4444',
+        accentColor: '#dc2626',
+        glowColor: 'rgba(239, 68, 68, 0.3)',
+        iconColor: '#ef4444',
+        label: '防火墙'
+      },
+      'ups': {
+        borderColor: '#14b8a6',
+        accentColor: '#0d9488',
+        glowColor: 'rgba(20, 184, 166, 0.3)',
+        iconColor: '#14b8a6',
+        label: 'UPS'
+      },
+      'pdus': {
+        borderColor: '#64748b',
+        accentColor: '#475569',
+        glowColor: 'rgba(100, 116, 139, 0.3)',
+        iconColor: '#64748b',
+        label: 'PDU'
+      },
+      'other': {
+        borderColor: '#94a3b8',
+        accentColor: '#64748b',
+        glowColor: 'rgba(148, 163, 184, 0.3)',
+        iconColor: '#94a3b8',
+        label: '其他'
+      }
+    };
+    return themeMap[type?.toLowerCase()] || themeMap['other'];
   };
 
   // 生成模拟监控数据
@@ -596,35 +710,32 @@ function RackVisualization() {
   // 生成左侧U数标记（从U1开始显示）
   const generateLeftUMarks = (height) => {
     const marks = [];
-    const uHeight = 25; // 调整为更小的U高度以适应屏幕显示
+    const uHeight = 25;
     
     for (let u = 1; u <= height; u++) {
-      // 使用与设备位置计算一致的逻辑
-      // U1在最底部，计算U位标记的顶部位置（从机柜顶部算起）
       const topPosition = (height - u) * uHeight;
       
       marks.push(
         <div key={`left-${u}`}>
-          {/* U位序号 */}
           <div 
             style={{
               position: 'absolute',
               top: `${topPosition}px`,
               left: '0',
-              width: '30px',
+              width: '16px',
               height: `${uHeight}px`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: u % 5 === 0 ? '#2e7d32' : '#4caf50', // 绿色系
-              fontSize: '12px',
-              fontWeight: u % 5 === 0 ? 'bold' : 'normal',
-              textShadow: '1px 1px 2px rgba(255,255,255,0.8)',
-              zIndex: 30, // 提高z-index确保在前面板之上
-              backgroundColor: 'rgba(255,255,255,0.9)',
-              borderRadius: '4px',
-              border: '1px solid rgba(129, 199, 132, 0.5)',
-              boxShadow: '0 2px 6px rgba(129, 199, 132, 0.3)'
+              color: u % 5 === 0 ? '#38bdf8' : '#cbd5e1',
+              fontSize: '10px',
+              fontWeight: u % 5 === 0 ? '700' : '500',
+              textShadow: u % 5 === 0 ? '0 0 10px rgba(56, 189, 248, 0.6)' : '0 0 4px rgba(0, 0, 0, 0.5)',
+              zIndex: 30,
+              backgroundColor: u % 5 === 0 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(30, 41, 59, 0.8)',
+              borderRadius: '3px',
+              border: u % 5 === 0 ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(148, 163, 184, 0.2)',
+              boxShadow: u % 5 === 0 ? '0 0 8px rgba(56, 189, 248, 0.3)' : 'inset 0 0 4px rgba(0, 0, 0, 0.3)'
             }}
           >
             {u}
@@ -639,35 +750,32 @@ function RackVisualization() {
   // 生成右侧U数标记（从U1开始显示）
   const generateRightUMarks = (height) => {
     const marks = [];
-    const uHeight = 25; // 调整为更小的U高度以适应屏幕显示
+    const uHeight = 25;
     
     for (let u = 1; u <= height; u++) {
-      // 使用与设备位置计算一致的逻辑
-      // U1在最底部，计算U位标记的顶部位置（从机柜顶部算起）
       const topPosition = (height - u) * uHeight;
       
       marks.push(
         <div key={`right-${u}`}>
-          {/* U位序号 */}
           <div 
             style={{
               position: 'absolute',
               top: `${topPosition}px`,
               right: '0',
-              width: '30px',
+              width: '16px',
               height: `${uHeight}px`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: u % 5 === 0 ? '#2e7d32' : '#4caf50', // 绿色系
-              fontSize: '12px',
-              fontWeight: u % 5 === 0 ? 'bold' : 'normal',
-              textShadow: '1px 1px 2px rgba(255,255,255,0.8)',
-              zIndex: 30, // 提高z-index确保在前面板之上
-              backgroundColor: 'rgba(255,255,255,0.9)',
-              borderRadius: '4px',
-              border: '1px solid rgba(129, 199, 132, 0.5)',
-              boxShadow: '0 2px 6px rgba(129, 199, 132, 0.3)'
+              color: u % 5 === 0 ? '#38bdf8' : '#cbd5e1',
+              fontSize: '10px',
+              fontWeight: u % 5 === 0 ? '700' : '500',
+              textShadow: u % 5 === 0 ? '0 0 10px rgba(56, 189, 248, 0.6)' : '0 0 4px rgba(0, 0, 0, 0.5)',
+              zIndex: 30,
+              backgroundColor: u % 5 === 0 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(30, 41, 59, 0.8)',
+              borderRadius: '3px',
+              border: u % 5 === 0 ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(148, 163, 184, 0.2)',
+              boxShadow: u % 5 === 0 ? '0 0 8px rgba(56, 189, 248, 0.3)' : 'inset 0 0 4px rgba(0, 0, 0, 0.3)'
             }}
           >
             {u}
@@ -832,7 +940,7 @@ function RackVisualization() {
             </Button>
             <Button 
               icon={<SettingOutlined />} 
-              onClick={() => setShowTooltipConfig(true)}
+              onClick={handleOpenTooltipConfig}
               type={showTooltipConfig ? 'primary' : 'default'}
             >
               字段配置
@@ -1009,18 +1117,39 @@ function RackVisualization() {
                   position: 'relative',
                   width: '600px',
                   height: `${selectedRack.height * 25}px`,
-                  background: 'linear-gradient(145deg, #e0f2fe, #b3e5fc)',
-                  border: '2px solid #81c784',
-                  borderRadius: '8px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-                  overflow: 'visible'
+                  background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 50%, #1e293b 100%)',
+                  border: '2px solid #38bdf8',
+                  borderRadius: '12px',
+                  boxShadow: `
+                    0 0 40px rgba(56, 189, 248, 0.2),
+                    0 0 80px rgba(56, 189, 248, 0.1),
+                    0 20px 60px rgba(0, 0, 0, 0.5),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                    inset 0 0 60px rgba(56, 189, 248, 0.05)
+                  `,
+                  overflow: 'visible',
+                  backdropFilter: 'blur(10px)'
                 }}>
-                  {/* 左侧U数标记 */}
+                  {/* 扫描线效果 */}
+                  <div className="scan-effect" style={{ top: '0' }} />
+                  
+                  {/* 玻璃光泽效果 */}
                   <div style={{
                     position: 'absolute',
+                    top: '0',
                     left: '0',
+                    right: '0',
+                    height: '50%',
+                    background: 'linear-gradient(180deg, rgba(56, 189, 248, 0.03) 0%, transparent 100%)',
+                    borderRadius: '10px 10px 0 0',
+                    pointerEvents: 'none'
+                  }} />
+                  {/* 左侧U数标记 - 贴紧机架边缘 */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '-18px',
                     top: '3px',
-                    width: '30px',
+                    width: '18px',
                     bottom: '3px',
                     zIndex: 20,
                     pointerEvents: 'none'
@@ -1028,12 +1157,12 @@ function RackVisualization() {
                     {generateLeftUMarks(selectedRack.height)}
                   </div>
                   
-                  {/* 右侧U数标记 */}
+                  {/* 右侧U数标记 - 贴紧机架边缘 */}
                   <div style={{
                     position: 'absolute',
-                    right: '0',
+                    right: '-18px',
                     top: '3px',
-                    width: '30px',
+                    width: '18px',
                     bottom: '3px',
                     zIndex: 20,
                     pointerEvents: 'none'
@@ -1048,10 +1177,10 @@ function RackVisualization() {
                     left: '33px',
                     width: '15px',
                     bottom: '3px',
-                    background: 'linear-gradient(90deg, #5a6268 0%, #495057 50%, #343a40 100%)',
-                    borderRight: '1px solid rgba(0,0,0,0.3)',
+                    background: 'linear-gradient(90deg, #374151 0%, #1f2937 50%, #111827 100%)',
+                    borderRight: '1px solid rgba(56, 189, 248, 0.3)',
                     borderRadius: '2px 0 0 2px',
-                    boxShadow: 'inset 0 0 3px rgba(0,0,0,0.4)'
+                    boxShadow: 'inset 0 0 3px rgba(0,0,0,0.5), 0 0 8px rgba(56, 189, 248, 0.1)'
                   }}>
                     {/* 导轨安装孔 - 左侧 */}
                     {Array.from({ length: Math.max(1, Math.floor((selectedRack.height * 25 - 6) / 25)) }).map((_, index) => (
@@ -1062,7 +1191,7 @@ function RackVisualization() {
                           left: '2px',
                           width: '11px',
                           height: '20px',
-                          top: `${index * 25 + 2}px`,
+                          top: `${(selectedRack.height - index - 1) * 25 + 2}px`,
                           background: 'linear-gradient(180deg, #2d3436 0%, #636e72 50%, #2d3436 100%)',
                           borderRadius: '1px',
                           boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(0,0,0,0.3)'
@@ -1102,7 +1231,7 @@ function RackVisualization() {
                           right: '2px',
                           width: '11px',
                           height: '20px',
-                          top: `${index * 25 + 2}px`,
+                          top: `${(selectedRack.height - index - 1) * 25 + 2}px`,
                           background: 'linear-gradient(180deg, #2d3436 0%, #636e72 50%, #2d3436 100%)',
                           borderRadius: '1px',
                           boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(0,0,0,0.3)'
@@ -1152,6 +1281,31 @@ function RackVisualization() {
                       pointerEvents: 'none'
                     }} />
                     
+                    {/* U位网格线 */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: '48px',
+                      right: '48px',
+                      bottom: '3px',
+                      pointerEvents: 'none',
+                      zIndex: 5
+                    }}>
+                      {Array.from({ length: Math.max(0, selectedRack.height - 1) }).map((_, index) => (
+                        <div
+                          key={`grid-line-${index}`}
+                          style={{
+                            position: 'absolute',
+                            top: `${(index + 1) * 25 - 1}px`,
+                            left: 0,
+                            right: 0,
+                            height: '1px',
+                            background: 'linear-gradient(90deg, transparent 0%, rgba(148, 163, 184, 0.15) 10%, rgba(148, 163, 184, 0.2) 50%, rgba(148, 163, 184, 0.15) 90%, transparent 100%)'
+                          }}
+                        />
+                      ))}
+                    </div>
+                    
                     {/* 移除了内侧U数标记，因为外侧已有U数显示 */}
                     
                     {/* 设备 */}
@@ -1172,16 +1326,22 @@ function RackVisualization() {
                             style={{
                               ...getDeviceStyle(device, selectedRack.height),
                               position: 'absolute',
-                              left: '2px',
-                              right: '2px',
-                              width: 'calc(100% - 4px)',
-                              borderRadius: '2px',
+                              left: '3px',
+                              right: '3px',
+                              width: 'calc(100% - 6px)',
+                              borderRadius: '3px',
                               display: 'flex',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.2)',
-                              background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-                              border: '1px solid #cbd5e1',
+                              boxShadow: `
+                                0 1px 2px rgba(0,0,0,0.3),
+                                0 2px 4px rgba(0,0,0,0.2),
+                                inset 0 1px 0 rgba(255,255,255,0.1),
+                                inset 0 -1px 0 rgba(0,0,0,0.1)
+                              `,
+                              background: 'linear-gradient(180deg, #3d4451 0%, #2d3139 50%, #252930 100%)',
+                              border: '1px solid #4a5568',
+                              borderTop: '1px solid #565c6b',
                               overflow: 'hidden',
                               margin: 0,
                               padding: 0,
@@ -1189,172 +1349,341 @@ function RackVisualization() {
                               pointerEvents: 'auto'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.01)';
-                              e.currentTarget.classList.add('device-hover');
+                              const isOneU = (device?.height || 1) === 1;
+                              if (isOneU) {
+                                e.currentTarget.style.height = '33px';
+                                e.currentTarget.style.zIndex = '150';
+                              }
+                              e.currentTarget.style.transform = 'scale(1.008)';
+                              e.currentTarget.style.boxShadow = `
+                                0 4px 12px rgba(56, 189, 248, 0.3),
+                                0 2px 6px rgba(0,0,0,0.3),
+                                inset 0 1px 0 rgba(255,255,255,0.15)
+                              `;
+                              e.currentTarget.style.borderColor = '#38bdf8';
                               
-                              // 计算tooltip位置（机柜右侧）
                               const rect = e.currentTarget.getBoundingClientRect();
-                              const tooltipX = rect.right + 5; // 设备右侧
-                              const tooltipY = rect.top + rect.height / 2; // 设备中间高度
-                              
-                              setTooltipPosition({ x: tooltipX, y: tooltipY });
-                              
-                              // 设置设备详情tooltip
-                              setDeviceTooltip({
-                                device: device
-                              });
+                              setTooltipPosition({ x: rect.right + 5, y: rect.top + rect.height / 2 });
+                              setDeviceTooltip({ device: device });
                             }}
                             onMouseLeave={(e) => {
+                              const isOneU = (device?.height || 1) === 1;
+                              if (isOneU) {
+                                const originalHeight = (device?.height || 1) * 25;
+                                e.currentTarget.style.height = `${originalHeight}px`;
+                                e.currentTarget.style.zIndex = '100';
+                              }
                               e.currentTarget.style.transform = 'scale(1)';
-                              e.currentTarget.classList.remove('device-hover');
-                              
-                              // 清除tooltip
+                              e.currentTarget.style.boxShadow = `
+                                0 1px 2px rgba(0,0,0,0.3),
+                                0 2px 4px rgba(0,0,0,0.2),
+                                inset 0 1px 0 rgba(255,255,255,0.1),
+                                inset 0 -1px 0 rgba(0,0,0,0.1)
+                              `;
+                              e.currentTarget.style.borderColor = '#4a5568';
                               setDeviceTooltip(null);
                             }}
                           >
-                              {/* 左侧状态指示区域 */}
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: '2px',
+                              background: 'linear-gradient(90deg, #38bdf8 0%, #0ea5e9 50%, #38bdf8 100%)',
+                              opacity: 0.6
+                            }} />
+                            
+                              {/* 左侧状态指示区域 - 增强版 */}
                               <div style={{
-                                width: '8%',
-                                backgroundColor: '#f1f5f9',
-                                borderRadius: '2px 0 0 2px',
+                                width: '7%',
+                                background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                                borderRadius: '3px 0 0 3px',
                                 display: 'flex',
-                                flexDirection: 'row',
-                                justifyContent: 'center',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
                                 alignItems: 'center',
-                                padding: '2px 3px',
-                                gap: '3px',
+                                padding: '4px 3px',
                                 flexShrink: 0,
                                 overflow: 'hidden',
                                 position: 'relative',
-                                borderRight: '1px solid rgba(148, 163, 184, 0.1)'
+                                borderRight: '1px solid rgba(0,0,0,0.5)'
                               }}>
-                                {/* 状态指示灯 */}
+                                {/* 设备类型标识 */}
                                 <div style={{
-                                  width: '4px',
-                                  height: '4px',
-                                  borderRadius: '50%',
-                                  backgroundColor: getDeviceStatusColor(device.status),
-                                  animation: device.status === 'warning' ? 'ledBlink 2s ease-in-out infinite' : 
-                                            device.status === 'error' ? 'ledBlink 0.8s ease-in-out infinite' : 'none',
-                                  boxShadow: `0 0 6px ${getDeviceStatusColor(device.status)}`
-                                }} />
+                                  width: '100%',
+                                  height: '8px',
+                                  background: 'linear-gradient(180deg, #334155 0%, #1e293b 100%)',
+                                  borderRadius: '2px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '1px solid rgba(56, 189, 248, 0.2)'
+                                }}>
+                                  <span style={{
+                                    fontSize: '4px',
+                                    color: '#38bdf8',
+                                    fontWeight: '700',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    {device.type?.toUpperCase() || 'DEV'}
+                                  </span>
+                                </div>
+                                
+                                {/* LED状态指示灯组 */}
                                 <div style={{
-                                  width: '4px',
-                                  height: '4px',
-                                  borderRadius: '50%',
-                                  backgroundColor: device.status === 'running' ? '#22c55e' : '#64748b',
-                                  boxShadow: device.status === 'running' ? '0 0 4px #22c55e' : 'none',
-                                  animation: device.status === 'running' ? 'ledBlink 3s ease-in-out infinite' : 'none'
-                                }} />
-                                {/* 电源指示 */}
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '3px',
+                                  alignItems: 'center'
+                                }}>
+                                  {/* 主状态灯 */}
+                                  <div style={{
+                                    display: 'flex',
+                                    gap: '2px'
+                                  }}>
+                                    <div style={{
+                                      width: '5px',
+                                      height: '5px',
+                                      borderRadius: '50%',
+                                      backgroundColor: getDeviceStatusColor(device.status),
+                                      animation: device.status === 'warning' ? 'ledBlink 2s ease-in-out infinite' : 
+                                                device.status === 'error' ? 'ledBlink 0.8s ease-in-out infinite' : 'none',
+                                      boxShadow: `0 0 8px ${getDeviceStatusColor(device.status)}`
+                                    }} />
+                                    <div style={{
+                                      width: '5px',
+                                      height: '5px',
+                                      borderRadius: '50%',
+                                      backgroundColor: device.status === 'running' ? '#22c55e' : '#4b5563',
+                                      boxShadow: device.status === 'running' ? '0 0 6px #22c55e' : 'none',
+                                      animation: device.status === 'running' ? 'ledBlink 3s ease-in-out infinite' : 'none'
+                                    }} />
+                                    <div style={{
+                                      width: '5px',
+                                      height: '5px',
+                                      borderRadius: '50%',
+                                      backgroundColor: '#22c55e',
+                                      boxShadow: '0 0 6px #22c55e',
+                                      animation: 'ledBlink 4s ease-in-out infinite'
+                                    }} />
+                                  </div>
+                                  
+                                  {/* 电源指示灯 */}
+                                  <div style={{
+                                    display: 'flex',
+                                    gap: '2px',
+                                    alignItems: 'center'
+                                  }}>
+                                    <div style={{
+                                      width: '4px',
+                                      height: '4px',
+                                      borderRadius: '1px',
+                                      backgroundColor: device.status !== 'offline' ? '#38bdf8' : '#475569',
+                                      boxShadow: device.status !== 'offline' ? '0 0 4px #38bdf8' : 'none'
+                                    }} />
+                                    <span style={{
+                                      fontSize: '4px',
+                                      color: device.status !== 'offline' ? '#38bdf8' : '#64748b',
+                                      fontWeight: '600'
+                                    }}>
+                                      PWR
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                {/* 设备序列号标签 */}
                                 <div style={{
-                                  width: '3px',
-                                  height: '3px',
-                                  borderRadius: '1px',
-                                  backgroundColor: '#22c55e',
-                                  boxShadow: '0 0 3px #22c55e'
-                                }} />
+                                  width: '100%',
+                                  textAlign: 'center',
+                                  borderTop: '1px solid rgba(148, 163, 184, 0.2)',
+                                  paddingTop: '2px'
+                                }}>
+                                  <span style={{
+                                    fontSize: '4px',
+                                    color: '#475569',
+                                    fontFamily: 'monospace'
+                                  }}>
+                                    SN:{device.serial?.slice(-4) || '0000'}
+                                  </span>
+                                </div>
                               </div>
                               
-                              {/* 中间设备信息区域 */}
+                              {/* 中间设备信息区域 - 增强版 */}
                               <div style={{
                                 flex: 1,
                                 background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
                                 display: 'flex',
-                                flexDirection: 'row',
+                                flexDirection: 'column',
                                 justifyContent: 'center',
-                                alignItems: 'center',
-                                padding: '4px 10px',
-                                gap: '8px',
+                                padding: '3px 8px',
                                 overflow: 'hidden',
-                                borderLeft: '1px solid rgba(148, 163, 184, 0.1)',
-                                borderRight: '1px solid rgba(148, 163, 184, 0.1)',
+                                borderLeft: '1px solid rgba(148, 163, 184, 0.15)',
+                                borderRight: '1px solid rgba(148, 163, 184, 0.15)',
                                 position: 'relative'
                               }}>
-                                {/* 设备图标 */}
+                                {/* 设备品牌/厂商标识 */}
                                 <div style={{
-                                  fontSize: '14px',
-                                  color: '#e2e8f0',
-                                  flexShrink: 0,
                                   display: 'flex',
                                   alignItems: 'center',
-                                  justifyContent: 'center'
+                                  gap: '4px',
+                                  marginBottom: '2px'
                                 }}>
-                                  {getDeviceIcon(device.type)}
+                                  <div style={{
+                                    fontSize: '10px',
+                                    color: '#38bdf8',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                  }}>
+                                    {getDeviceIcon(device.type)}
+                                  </div>
+                                  <span style={{
+                                    fontSize: '5px',
+                                    color: '#64748b',
+                                    fontWeight: '600',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    {device.brand || 'ENTERPRISE'}
+                                  </span>
                                 </div>
-                                
-                                {/* 分隔符 */}
-                                <div style={{
-                                  width: '1px',
-                                  height: '14px',
-                                  background: 'rgba(148, 163, 184, 0.3)'
-                                }} />
                                 
                                 {/* 设备名称 */}
                                 <div style={{
                                   color: '#f1f5f9',
-                                  fontSize: '9px',
+                                  fontSize: '8px',
                                   fontWeight: '600',
                                   fontFamily: '"Roboto Mono", "Consolas", monospace',
                                   textAlign: 'left',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
-                                  flexShrink: 1,
-                                  minWidth: 0
+                                  textShadow: '0 0 10px rgba(56, 189, 248, 0.3)'
                                 }}>
                                   {deviceName}
                                 </div>
                                 
-                                {/* 型号/类型 */}
+                                {/* 型号和规格 */}
                                 <div style={{
-                                  color: '#64748b',
-                                  fontSize: '7px',
-                                  fontFamily: '"Roboto Mono", monospace',
-                                  flexShrink: 0,
-                                  whiteSpace: 'nowrap'
+                                  display: 'flex',
+                                  gap: '8px',
+                                  alignItems: 'center',
+                                  marginTop: '2px'
                                 }}>
-                                  {device.model || device.type || ''}
+                                  <span style={{
+                                    color: '#64748b',
+                                    fontSize: '6px',
+                                    fontFamily: '"Roboto Mono", monospace',
+                                    background: 'rgba(56, 189, 248, 0.1)',
+                                    padding: '1px 4px',
+                                    borderRadius: '2px',
+                                    border: '1px solid rgba(56, 189, 248, 0.2)'
+                                  }}>
+                                    {device.model || device.type?.toUpperCase() || 'STD'}
+                                  </span>
+                                  {device.ip && (
+                                    <span style={{
+                                      color: '#22c55e',
+                                      fontSize: '6px',
+                                      fontFamily: '"Roboto Mono", monospace'
+                                    }}>
+                                      {device.ip}
+                                    </span>
+                                  )}
                                 </div>
+                                
+                                {/* 散热/通风口装饰 - 根据设备类型显示 */}
+                                {(device.type === 'server' || device.type === 'storage') && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    right: '8px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    display: 'flex',
+                                    gap: '2px'
+                                  }}>
+                                    {Array.from({ length: 3 }).map((_, i) => (
+                                      <div key={i} style={{
+                                        width: '3px',
+                                        height: '12px',
+                                        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                                        borderRadius: '1px',
+                                        border: '1px solid rgba(148, 163, 184, 0.2)'
+                                      }} />
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               
-                              {/* 右侧功能区域 */}
+                              {/* 右侧端口/功能区域 - 增强版 */}
                               <div style={{
-                                width: '10%',
-                                backgroundColor: '#f1f5f9',
-                                borderRadius: '0 2px 2px 0',
+                                width: '12%',
+                                background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                                borderRadius: '0 3px 3px 0',
                                 display: 'flex',
-                                flexDirection: 'row',
+                                flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 flexShrink: 0,
-                                padding: '2px 3px',
-                                gap: '3px',
+                                padding: '4px 3px',
+                                gap: '4px',
                                 overflow: 'hidden',
                                 position: 'relative',
-                                borderLeft: '1px solid rgba(148, 163, 184, 0.1)'
+                                borderLeft: '1px solid rgba(148, 163, 184, 0.2)'
                               }}>
-                                {/* 端口指示 */}
+                                {/* 端口指示灯阵列 */}
                                 <div style={{
-                                  width: '3px',
-                                  height: '4px',
-                                  backgroundColor: '#22c55e',
-                                  borderRadius: '0 0 1px 1px',
-                                  boxShadow: '0 0 3px rgba(34, 197, 94, 0.5)'
-                                }} />
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(2, 1fr)',
+                                  gap: '2px'
+                                }}>
+                                  {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} style={{
+                                      width: '4px',
+                                      height: '4px',
+                                      borderRadius: '1px',
+                                      backgroundColor: i < 3 ? '#22c55e' : '#475569',
+                                      boxShadow: i < 3 ? '0 0 3px rgba(34, 197, 94, 0.6)' : 'none',
+                                      animation: i < 2 ? 'ledBlink 2s ease-in-out infinite' : 'none'
+                                    }} />
+                                  ))}
+                                </div>
+                                
+                                {/* 管理接口标识 */}
                                 <div style={{
-                                  width: '3px',
-                                  height: '4px',
-                                  backgroundColor: '#22c55e',
-                                  borderRadius: '0 0 1px 1px',
-                                  boxShadow: '0 0 3px rgba(34, 197, 94, 0.5)'
-                                }} />
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '2px',
+                                  marginTop: '2px'
+                                }}>
+                                  <div style={{
+                                    width: '0',
+                                    height: '0',
+                                    borderLeft: '4px solid transparent',
+                                    borderRight: '4px solid transparent',
+                                    borderBottom: '6px solid #64748b'
+                                  }} />
+                                  <span style={{
+                                    fontSize: '5px',
+                                    color: '#64748b',
+                                    fontWeight: '600'
+                                  }}>
+                                    MGMT
+                                  </span>
+                                </div>
+                                
+                                {/* 设备高度U数标识 */}
                                 <div style={{
-                                  width: '3px',
-                                  height: '4px',
-                                  backgroundColor: '#64748b',
-                                  borderRadius: '0 0 1px 1px'
-                                }} />
+                                  fontSize: '5px',
+                                  color: '#38bdf8',
+                                  fontWeight: '700',
+                                  fontFamily: '"Roboto Mono", monospace',
+                                  background: 'rgba(56, 189, 248, 0.15)',
+                                  padding: '1px 4px',
+                                  borderRadius: '2px',
+                                  border: '1px solid rgba(56, 189, 248, 0.3)'
+                                }}>
+                                  {device.height}U
+                                </div>
                               </div>
                             </div>
                           );
@@ -1448,13 +1777,13 @@ function RackVisualization() {
                     <div style={{
                       fontSize: '16px',
                       fontWeight: '600',
-                      color: '#2e7d32',
-                      textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                      color: '#0f172a',
+                      textShadow: '0 1px 2px rgba(255,255,255,0.5)',
                       padding: '6px 14px',
-                      background: 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(240,255,240,0.95))',
+                      background: 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241, 245, 249, 0.95))',
                       borderRadius: '10px',
-                      border: '1px solid rgba(129, 199, 132, 0.4)',
-                      boxShadow: '0 3px 10px rgba(129, 199, 132, 0.2)',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
+                      boxShadow: '0 3px 10px rgba(56, 189, 248, 0.2)',
                       transition: 'all 0.3s ease',
                       whiteSpace: 'nowrap',
                       maxWidth: '60%',
@@ -1466,7 +1795,8 @@ function RackVisualization() {
                     
                     {/* 设备数量badge */}
                     <div className="device-count-badge">
-                      设备数量: {devices.length}
+                      <span style={{ color: '#38bdf8', fontWeight: '600' }}>{devices.length}</span>
+                      <span style={{ color: '#94a3b8' }}> 设备</span>
                     </div>
                   </div>
                 </div>
@@ -1488,185 +1818,84 @@ function RackVisualization() {
           )}
         </ErrorBoundary>
         
-        {/* Tooltip字段配置面板 */}
-        {showTooltipConfig && (
-          <div 
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 2147483647,
-              animation: 'slideIn 0.3s ease-out'
-            }}
-          >
-            <div style={{
-              background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-              borderRadius: '12px',
-              padding: '20px',
-              width: '380px',
-              border: '1px solid rgba(94, 234, 212, 0.3)',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
-            }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '16px',
-                paddingBottom: '12px',
-                borderBottom: '1px solid rgba(94, 234, 212, 0.2)'
-              }}>
-                <div style={{ color: '#f8fafc', fontSize: '16px', fontWeight: 'bold' }}>
-                  设备详情字段配置
+        {/* 设备详情字段配置模态框 */}
+        <Modal
+          title="设备详情字段配置"
+          open={showTooltipConfig}
+          onCancel={() => setShowTooltipConfig(false)}
+          footer={null}
+          width={500}
+        >
+          {loadingTooltipFields ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+              加载字段配置中...
+            </div>
+          ) : Object.keys(tooltipFields).length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+              暂无字段配置，请先在设备字段管理中添加字段
+            </div>
+          ) : (
+            <div>
+              <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                <div style={{ color: '#64748b', fontSize: '12px', marginBottom: '12px' }}>
+                  选择要在设备详情中显示的字段： ({Object.keys(tooltipFields).length} 个字段)
                 </div>
-                <button 
-                  onClick={() => setShowTooltipConfig(false)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#94a3b8',
-                    fontSize: '20px',
-                    cursor: 'pointer',
-                    padding: '4px 8px'
-                  }}
-                >
-                  ×
-                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  {Object.entries(tooltipFields).map(([key, field]) => (
+                    <div
+                      key={key}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: field.enabled ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+                        border: field.enabled ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid transparent',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => {
+                        setTooltipFields(prev => ({
+                          ...prev,
+                          [key]: { ...prev[key], enabled: !prev[key].enabled }
+                        }));
+                      }}
+                    >
+                      <Checkbox checked={field.enabled} />
+                      {field.label}
+                    </div>
+                  ))}
+                </div>
               </div>
               
-              {loadingTooltipFields ? (
-                <div style={{ 
-                  padding: '40px', 
-                  textAlign: 'center',
-                  color: '#94a3b8'
-                }}>
-                  加载字段配置中...
-                </div>
-              ) : Object.keys(tooltipFields).length === 0 ? (
-                <div style={{ 
-                  padding: '40px', 
-                  textAlign: 'center',
-                  color: '#94a3b8'
-                }}>
-                  暂无字段配置，请先在设备字段管理中添加字段
-                </div>
-              ) : (
-                <>
-                  <div style={{ 
-                    maxHeight: '400px', 
-                    overflowY: 'auto',
-                    paddingRight: '8px'
+              <div style={{ marginTop: '20px', textAlign: 'right' }}>
+                <Space>
+                  <Button onClick={() => {
+                    const allEnabled = Object.values(tooltipFields).every(f => f.enabled);
+                    setTooltipFields(prev => {
+                      const newFields = { ...prev };
+                      Object.keys(newFields).forEach(key => {
+                        newFields[key] = { ...newFields[key], enabled: !allEnabled };
+                      });
+                      return newFields;
+                    });
                   }}>
-                    <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '12px' }}>
-                      选择要在设备详情中显示的字段：
-                    </div>
-                    
-                    {Object.entries(tooltipFields).map(([key, field]) => (
-                      <label 
-                        key={key}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          marginBottom: '4px',
-                          background: field.enabled ? 'rgba(94, 234, 212, 0.1)' : 'transparent',
-                          borderRadius: '6px',
-                          border: field.enabled ? '1px solid rgba(94, 234, 212, 0.3)' : '1px solid transparent',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={field.enabled}
-                          onChange={() => setTooltipFields(prev => ({
-                            ...prev,
-                            [key]: { ...prev[key], enabled: !prev[key].enabled }
-                          }))}
-                          style={{
-                            marginRight: '12px',
-                            width: '18px',
-                            height: '18px',
-                            accentColor: '#5eead4'
-                          }}
-                        />
-                        <span style={{ 
-                          color: field.enabled ? '#f8fafc' : '#64748b',
-                          fontSize: '14px'
-                        }}>
-                          {field.label}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  
-                  <div style={{ 
-                    marginTop: '16px',
-                    paddingTop: '16px',
-                    borderTop: '1px solid rgba(94, 234, 212, 0.2)',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: '12px'
-                  }}>
-                    <button
-                      onClick={() => {
-                        const allDisabled = Object.values(tooltipFields).every(f => !f.enabled);
-                        setTooltipFields(prev => {
-                          const newFields = { ...prev };
-                          Object.keys(newFields).forEach(key => {
-                            newFields[key] = { ...newFields[key], enabled: allDisabled };
-                          });
-                          return newFields;
-                        });
-                      }}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        border: '1px solid rgba(94, 234, 212, 0.3)',
-                        background: 'transparent',
-                        color: '#5eead4',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      全选/取消全选
-                    </button>
-                    <button
-                      onClick={() => setShowTooltipConfig(false)}
-                      style={{
-                        padding: '8px 20px',
-                        borderRadius: '6px',
-                        border: '1px solid rgba(148, 163, 184, 0.3)',
-                        background: 'transparent',
-                        color: '#94a3b8',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      取消
-                    </button>
-                    <button
-                      onClick={saveTooltipConfig}
-                      disabled={savingTooltipConfig}
-                      style={{
-                        padding: '8px 20px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        background: savingTooltipConfig ? 'rgba(94, 234, 212, 0.3)' : 'linear-gradient(145deg, #5eead4, #2dd4bf)',
-                        color: savingTooltipConfig ? '#64748b' : '#0f172a',
-                        cursor: savingTooltipConfig ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold',
-                        fontSize: '14px'
-                      }}
-                    >
-                      {savingTooltipConfig ? '保存中...' : '保存'}
-                    </button>
-                  </div>
-                </>
-              )}
+                    全选/取消全选
+                  </Button>
+                  <Button onClick={() => setShowTooltipConfig(false)}>
+                    取消
+                  </Button>
+                  <Button type="primary" onClick={async () => {
+                    await saveTooltipConfig();
+                  }} loading={savingTooltipConfig}>
+                    保存
+                  </Button>
+                </Space>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </Modal>
         
         {/* 设备详情tooltip - 放在容器外部确保不被遮挡 */}
         {deviceTooltip && (
@@ -1686,36 +1915,70 @@ function RackVisualization() {
               设备详情
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '11px' }}>
-              {tooltipFields.name?.enabled && (
-                <div style={{ color: '#94a3b8' }}>名称: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.name || '未知设备'}</span></div>
-              )}
-              {tooltipFields.deviceId?.enabled && (
-                <div style={{ color: '#94a3b8' }}>设备ID: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.deviceId || deviceTooltip.device.id || '-'}</span></div>
-              )}
-              {tooltipFields.type?.enabled && (
-                <div style={{ color: '#94a3b8' }}>类型: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.type || deviceTooltip.device.device_type || '-'}</span></div>
-              )}
-              {tooltipFields.brand?.enabled && (
-                <div style={{ color: '#94a3b8' }}>品牌: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.brand || '-'}</span></div>
-              )}
-              {tooltipFields.model?.enabled && (
-                <div style={{ color: '#94a3b8' }}>型号: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.model || '-'}</span></div>
-              )}
-              {tooltipFields.status?.enabled && (
-                <div style={{ color: '#94a3b8' }}>状态: <span style={{ color: deviceTooltip.device.status === 'running' ? '#4ade80' : deviceTooltip.device.status === 'warning' ? '#fbbf24' : deviceTooltip.device.status === 'error' ? '#f87171' : '#94a3b8' }}>{deviceTooltip.device.status === 'running' ? '运行中' : deviceTooltip.device.status === 'warning' ? '警告' : deviceTooltip.device.status === 'error' ? '故障' : deviceTooltip.device.status || '未知'}</span></div>
-              )}
-              {tooltipFields.position?.enabled && (
-                <div style={{ color: '#94a3b8' }}>位置: <span style={{ color: '#e2e8f0' }}>U{deviceTooltip.device.position} ({deviceTooltip.device.height}U)</span></div>
-              )}
-              {tooltipFields.height?.enabled && (
-                <div style={{ color: '#94a3b8' }}>高度: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.height || '-'}U</span></div>
-              )}
-              {tooltipFields.ipAddress?.enabled && (
-                <div style={{ color: '#94a3b8' }}>IP地址: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.ipAddress || deviceTooltip.device.ip_address || '-'}</span></div>
-              )}
-              {tooltipFields.power?.enabled && (
-                <div style={{ color: '#94a3b8' }}>功率: <span style={{ color: '#e2e8f0' }}>{deviceTooltip.device.power ? `${deviceTooltip.device.power}W` : '-'}</span></div>
-              )}
+              {console.log('tooltipFields:', tooltipFields)}
+              {Object.entries(tooltipFields).map(([key, field]) => {
+                if (!field.enabled) return null;
+                
+                let value = deviceTooltip.device[field.field];
+                let displayValue = '-';
+                
+                if (value !== undefined && value !== null && value !== '') {
+                  // 特殊字段格式化
+                  if (field.field === 'status') {
+                    const statusMap = {
+                      'running': '运行中',
+                      'maintenance': '维护中',
+                      'offline': '离线',
+                      'fault': '故障',
+                      'warning': '警告',
+                      'error': '故障'
+                    };
+                    displayValue = statusMap[value] || value;
+                  } else if (field.field === 'type') {
+                    const typeMap = {
+                      'server': '服务器',
+                      'switch': '交换机',
+                      'router': '路由器',
+                      'storage': '存储设备',
+                      'other': '其他设备'
+                    };
+                    displayValue = typeMap[value] || value;
+                  } else if (field.field === 'position') {
+                    displayValue = `U${value}`;
+                  } else if (field.field === 'height') {
+                    displayValue = `${value}U`;
+                  } else if (field.field === 'powerConsumption' || field.field === 'power') {
+                    displayValue = `${value}W`;
+                  } else if (field.fieldType === 'date') {
+                    try {
+                      displayValue = new Date(value).toLocaleDateString('zh-CN');
+                    } catch (e) {
+                      displayValue = value;
+                    }
+                  } else if (field.field === 'rackId') {
+                    displayValue = value;
+                  } else {
+                    displayValue = value;
+                  }
+                }
+                
+                // 获取字段标签（优先使用配置中的label，否则使用fieldName）
+                const label = field.label || field.fieldName;
+                
+                // 状态字段使用特殊颜色
+                let valueColor = '#e2e8f0';
+                if (field.field === 'status') {
+                  if (value === 'running') valueColor = '#4ade80';
+                  else if (value === 'warning') valueColor = '#fbbf24';
+                  else if (value === 'error' || value === 'fault') valueColor = '#f87171';
+                }
+                
+                return (
+                  <div key={key} style={{ color: '#94a3b8' }}>
+                    {label}: <span style={{ color: valueColor }}>{displayValue}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
