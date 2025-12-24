@@ -39,6 +39,9 @@ const rackRoutes = require('./routes/racks');
 const roomRoutes = require('./routes/rooms');
 const deviceFieldRoutes = require('./routes/deviceFields');
 const backgroundRoutes = require('./routes/background');
+const consumableRoutes = require('./routes/consumables');
+const consumableRecordRoutes = require('./routes/consumableRecords');
+const consumableCategoryRoutes = require('./routes/consumableCategories');
 
 // 使用路由
 app.use('/api/devices', deviceRoutes);
@@ -46,6 +49,9 @@ app.use('/api/racks', rackRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/deviceFields', deviceFieldRoutes);
 app.use('/api/background', backgroundRoutes);
+app.use('/api/consumables', consumableRoutes);
+app.use('/api/consumable-records', consumableRecordRoutes);
+app.use('/api/consumable-categories', consumableCategoryRoutes);
 
 // 静态文件服务
 app.use('/uploads', express.static('uploads'));

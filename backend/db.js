@@ -24,7 +24,10 @@ if (DB_TYPE === 'mysql') {
   sequelize = new Sequelize({
     dialect: 'sqlite',
     storage: process.env.DB_PATH || './idc_management.db',
-    logging: process.env.NODE_ENV === 'development' ? console.log : false
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    dialectOptions: {
+      charset: 'utf8mb4'
+    }
   });
 }
 
