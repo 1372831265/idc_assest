@@ -42,6 +42,11 @@ const backgroundRoutes = require('./routes/background');
 const consumableRoutes = require('./routes/consumables');
 const consumableRecordRoutes = require('./routes/consumableRecords');
 const consumableCategoryRoutes = require('./routes/consumableCategories');
+const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
+const rolesRoutes = require('./routes/roles');
+const loginHistoryRoutes = require('./routes/loginHistory');
+const operationLogsRoutes = require('./routes/operationLogs');
 
 // 使用路由
 app.use('/api/devices', deviceRoutes);
@@ -52,6 +57,11 @@ app.use('/api/background', backgroundRoutes);
 app.use('/api/consumables', consumableRoutes);
 app.use('/api/consumable-records', consumableRecordRoutes);
 app.use('/api/consumable-categories', consumableCategoryRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/roles', rolesRoutes);
+app.use('/api/login-history', loginHistoryRoutes);
+app.use('/api/operation-logs', operationLogsRoutes);
 
 // 静态文件服务
 app.use('/uploads', express.static('uploads'));
