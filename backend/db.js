@@ -22,15 +22,11 @@ if (DB_TYPE === 'mysql') {
   );
   dbDialect = 'mysql';
 } else {
-  // SQLite 配置（默认）
   sequelize = new Sequelize({
     dialect: 'sqlite',
     storage: process.env.DB_PATH || './idc_management.db',
-    logging: process.env.NODE_ENV === 'development' ? console.log : false,
-    dialectOptions: {
-      charset: 'utf8mb4'
-    }
-  );
+    logging: process.env.NODE_ENV === 'development' ? console.log : false
+  });
   dbDialect = 'sqlite';
 }
 
