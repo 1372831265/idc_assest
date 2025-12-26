@@ -285,7 +285,7 @@ function RackManagement() {
         </Space>
       ),
     },
-  ];
+  ], [showModal, handleDelete]);
 
   return (
     <div>
