@@ -5,6 +5,7 @@ const DB_TYPE = process.env.DB_TYPE || 'sqlite'; // 数据库类型：sqlite 或
 
 // 根据数据库类型创建连接
 let sequelize;
+let dbDialect = 'sqlite'; // 实际使用的数据库类型
 
 if (DB_TYPE === 'mysql') {
   // MySQL 配置
@@ -19,6 +20,7 @@ if (DB_TYPE === 'mysql') {
       logging: process.env.NODE_ENV === 'development' ? console.log : false
     }
   );
+  dbDialect = 'mysql';
 } else {
   // SQLite 配置（默认）
   sequelize = new Sequelize({
@@ -28,7 +30,8 @@ if (DB_TYPE === 'mysql') {
     dialectOptions: {
       charset: 'utf8mb4'
     }
-  });
+  );
+  dbDialect = 'sqlite';
 }
 
-module.exports = { sequelize, DB_TYPE };
+module.exports = { sequelize, DB_TYPE, dbDialect };
