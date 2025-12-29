@@ -424,7 +424,7 @@ const UserManagement = () => {
         </Space>
       </div>
 
-      <Card style={cardStyle} headStyle={cardHeadStyle} bodyStyle={{ padding: '20px 24px' }}>
+      <Card style={cardStyle} styles={{ header: cardHeadStyle, body: { padding: '20px 24px' } }}>
         <Table
           columns={columns}
           dataSource={users}
@@ -454,7 +454,7 @@ const UserManagement = () => {
         onCancel={() => setModalVisible(false)}
         footer={null}
         width={500}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           body: { padding: '24px' },
           header: { borderBottom: '1px solid #f0f0f0', padding: '16px 24px' }
@@ -585,7 +585,7 @@ const UserManagement = () => {
         onCancel={() => setPasswordModalVisible(false)}
         footer={null}
         width={400}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           body: { padding: '24px' },
           header: { borderBottom: '1px solid #f0f0f0', padding: '16px 24px' }
@@ -646,7 +646,7 @@ const UserManagement = () => {
         onCancel={() => setAvatarModalVisible(false)}
         footer={null}
         width={400}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           body: { padding: '24px' },
           header: { borderBottom: '1px solid #f0f0f0', padding: '16px 24px' }

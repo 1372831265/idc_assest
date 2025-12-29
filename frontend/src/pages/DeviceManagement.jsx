@@ -1,11 +1,28 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Card, Space, InputNumber, Switch, Upload, Progress, Checkbox } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Card, Space, InputNumber, Switch, Upload, Progress, Checkbox, Spin } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UploadOutlined, DownloadOutlined, SettingOutlined, UndoOutlined, CloudServerOutlined, SwapOutlined, SafetyOutlined, DatabaseOutlined, AppstoreOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+
+// 防抖 Hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 // 工具函数提取到组件外部，避免每次渲染重复创建
 const getStatusConfig = (status) => {
@@ -144,6 +161,7 @@ function DeviceManagement() {
   const [allDevices, setAllDevices] = useState([]);
   const [racks, setRacks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [form] = Form.useForm();
@@ -185,8 +203,98 @@ function DeviceManagement() {
   // 列宽状态
   const [columnWidths, setColumnWidths] = useState({});
 
-  // 获取所有设备数据（不分页，用于本地搜索）
-  const fetchAllDevices = async () => {
+  // 缓存用于搜索的数据（避免重复处理）
+  const devicesCacheRef = useRef({
+    timestamp: 0,
+    data: null,
+    TTL: 5 * 60 * 1000 // 缓存5分钟
+  });
+
+  // 防抖搜索关键词
+  const debouncedKeyword = useDebounce(keyword, 300);
+
+  // 预计算所有设备的搜索索引（提升搜索性能）
+  const searchIndexRef = useRef(new Map());
+
+  // 构建设备搜索索引
+  const buildSearchIndex = useCallback((devices) => {
+    const index = new Map();
+    devices.forEach((device, idx) => {
+      const searchableValues = [];
+      
+      // 收集所有基本类型字段值
+      Object.entries(device).forEach(([key, value]) => {
+        if (value === null || value === undefined) return;
+        if (typeof value === 'object') {
+          // 收集嵌套对象值
+          if (device.Rack?.name) searchableValues.push(String(device.Rack.name).toLowerCase());
+          if (device.Rack?.Room?.name) searchableValues.push(String(device.Rack.Room.name).toLowerCase());
+          // 收集自定义字段值
+          if (device.customFields && typeof device.customFields === 'object') {
+            Object.values(device.customFields).forEach(cfValue => {
+              if (cfValue !== null && cfValue !== undefined && typeof cfValue !== 'object') {
+                searchableValues.push(String(cfValue).toLowerCase());
+              }
+            });
+          }
+        } else {
+          searchableValues.push(String(value).toLowerCase());
+        }
+      });
+      
+      index.set(idx, searchableValues);
+    });
+    return index;
+  }, []);
+
+  // 优化的全字段搜索函数
+  const searchDevices = useCallback((devices, keyword) => {
+    if (!keyword || !keyword.trim()) {
+      return devices;
+    }
+    
+    const searchTerm = keyword.toLowerCase().trim();
+    
+    return devices.filter((device, idx) => {
+      // 使用预计算的搜索索引
+      let searchableValues = searchIndexRef.current.get(idx);
+      
+      if (!searchableValues) {
+        // 如果没有预计算索引，当场计算并缓存
+        searchableValues = [];
+        Object.entries(device).forEach(([key, value]) => {
+          if (value === null || value === undefined) return;
+          if (typeof value === 'object') {
+            if (device.Rack?.name) searchableValues.push(String(device.Rack.name).toLowerCase());
+            if (device.Rack?.Room?.name) searchableValues.push(String(device.Rack.Room.name).toLowerCase());
+            if (device.customFields && typeof device.customFields === 'object') {
+              Object.values(device.customFields).forEach(cfValue => {
+                if (cfValue !== null && cfValue !== undefined && typeof cfValue !== 'object') {
+                  searchableValues.push(String(cfValue).toLowerCase());
+                }
+              });
+            }
+          } else {
+            searchableValues.push(String(value).toLowerCase());
+          }
+        });
+        searchIndexRef.current.set(idx, searchableValues);
+      }
+      
+      return searchableValues.some(value => value.includes(searchTerm));
+    });
+  }, []);
+
+  // 获取所有设备数据（不分页，用于本地搜索）- 使用缓存
+  const fetchAllDevices = useCallback(async (forceRefresh = false) => {
+    const now = Date.now();
+    const cache = devicesCacheRef.current;
+    
+    // 检查缓存是否有效
+    if (!forceRefresh && cache.data && (now - cache.timestamp) < cache.TTL) {
+      return cache.data;
+    }
+    
     try {
       const response = await axios.get('/api/devices', { 
         params: { page: 1, pageSize: 99999 } 
@@ -207,87 +315,62 @@ function DeviceManagement() {
         return deviceWithFields;
       });
       
+      // 更新缓存
+      cache.data = processedDevices;
+      cache.timestamp = now;
+      
+      // 预计算搜索索引
+      searchIndexRef.current = buildSearchIndex(processedDevices);
+      
       return processedDevices;
     } catch (error) {
       console.error('获取所有设备数据失败:', error);
-      return [];
+      return cache.data || [];
     }
-  };
+  }, [buildSearchIndex]);
 
-  // 获取所有设备（支持搜索、筛选和分页）
-  const fetchDevices = async (page = 1, pageSize = 10, searchParams = {}) => {
+  // 使用 useMemo 缓存筛选后的设备数据
+  const filteredDevicesMemo = useMemo(() => {
+    if (!allDevices.length) return [];
+    
+    let result = allDevices;
+    
+    // 状态筛选
+    if (status && status !== 'all') {
+      result = result.filter(device => device.status === status);
+    }
+    
+    // 类型筛选
+    if (type && type !== 'all') {
+      result = result.filter(device => device.type === type);
+    }
+    
+    // 关键词搜索（使用防抖后的关键词）
+    if (debouncedKeyword && debouncedKeyword.trim()) {
+      result = searchDevices(result, debouncedKeyword);
+    }
+    
+    return result;
+  }, [allDevices, status, type, debouncedKeyword, searchDevices]);
+
+  // 获取所有设备（支持搜索、筛选和分页）- 使用缓存和useCallback
+  const fetchDevices = useCallback(async (page = 1, pageSize = 10) => {
     try {
       setLoading(true);
       
-      // 先获取所有设备数据
+      // 先获取所有设备数据（使用缓存）
       const allData = await fetchAllDevices();
       setAllDevices(allData);
       
-      // 应用筛选条件
-      let filteredDevices = allData;
-      
-      // 状态筛选
-      const searchStatus = searchParams.status || status;
-      if (searchStatus && searchStatus !== 'all') {
-        filteredDevices = filteredDevices.filter(device => device.status === searchStatus);
-      }
-      
-      // 类型筛选
-      const searchType = searchParams.type || type;
-      if (searchType && searchType !== 'all') {
-        filteredDevices = filteredDevices.filter(device => device.type === searchType);
-      }
-      
-      // 关键词搜索
-      const searchKeyword = searchParams.keyword || keyword;
-      if (searchKeyword && searchKeyword.trim()) {
-        filteredDevices = searchDevices(filteredDevices, searchKeyword);
-      }
-      
-      setDevices(filteredDevices);
-      setPagination(prev => ({ ...prev, current: page, pageSize, total: filteredDevices.length }));
+      // 更新分页信息（筛选后的数据会通过useMemo自动更新）
+      setPagination(prev => ({ ...prev, current: page, pageSize, total: filteredDevicesMemo.length }));
     } catch (error) {
       message.error('获取设备列表失败');
       console.error('获取设备列表失败:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  // 全字段搜索函数
-  const searchDevices = (devices, keyword) => {
-    if (!keyword || !keyword.trim()) {
-      return devices;
-    }
-    
-    const searchTerm = keyword.toLowerCase().trim();
-    
-    return devices.filter(device => {
-      // 搜索设备对象的所有属性值（包括自定义字段）
-      const allFieldValues = Object.values(device).filter(value => {
-        if (value === null || value === undefined) return false;
-        if (typeof value === 'object') return false;
-        return true;
-      });
-      
-      // 搜索嵌套对象中的值（Rack、Room等）
-      if (device.Rack?.name) allFieldValues.push(device.Rack.name);
-      if (device.Rack?.Room?.name) allFieldValues.push(device.Rack.Room.name);
-      
-      // 搜索自定义字段的值
-      if (device.customFields && typeof device.customFields === 'object') {
-        Object.values(device.customFields).forEach(value => {
-          if (value !== null && value !== undefined && typeof value !== 'object') {
-            allFieldValues.push(value);
-          }
-        });
-      }
-      
-      return allFieldValues.some(value => {
-        return String(value).toLowerCase().includes(searchTerm);
-      });
-    });
-  };
+  }, [fetchAllDevices, filteredDevicesMemo.length]);
 
   // 获取设备字段配置
   const fetchDeviceFields = async () => {
@@ -455,36 +538,30 @@ function DeviceManagement() {
 
   // 搜索处理函数
   const handleSearch = (values) => {
+    setSearching(true);
+    
     setKeyword(values.keyword || '');
     setStatus(values.status || 'all');
     setType(values.type || 'all');
     
-    // 本地全字段搜索
-    const filteredDevices = searchDevices(allDevices, values.keyword || '');
+    // 筛选后的数据会通过useMemo自动更新，这里只需更新分页
+    setPagination(prev => ({ ...prev, current: 1 }));
     
-    // 状态筛选
-    let finalDevices = filteredDevices;
-    if (values.status && values.status !== 'all') {
-      finalDevices = finalDevices.filter(device => device.status === values.status);
-    }
-    
-    // 类型筛选
-    if (values.type && values.type !== 'all') {
-      finalDevices = finalDevices.filter(device => device.type === values.type);
-    }
-    
-    setDevices(finalDevices);
-    setPagination(prev => ({ ...prev, current: 1, total: finalDevices.length }));
+    // 短暂延迟后移除搜索状态，提供视觉反馈
+    setTimeout(() => setSearching(false), 300);
   };
 
   // 重置筛选条件
   const handleReset = () => {
+    setSearching(true);
+    
     setKeyword('');
     setStatus('all');
     setType('all');
     searchForm.resetFields();
-    setDevices(allDevices);
-    setPagination(prev => ({ ...prev, current: 1, total: allDevices.length }));
+    
+    // 短暂延迟后移除搜索状态
+    setTimeout(() => setSearching(false), 300);
   };
 
   // 表格分页变化处理
@@ -1070,7 +1147,7 @@ function DeviceManagement() {
         </Space>
       </div>
 
-      <Card size="small" style={searchCardStyle} bodyStyle={{ padding: '16px 20px' }}>
+      <Card size="small" style={searchCardStyle} styles={{ body: { padding: '16px 20px' } }}>
         <Form
           form={searchForm}
           layout="inline"
@@ -1142,6 +1219,17 @@ function DeviceManagement() {
       </Card>
 
       <Card style={cardStyle}>
+        {(!loading && filteredDevicesMemo.length === 0 && !searching) && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '60px 20px', 
+            color: '#999',
+            fontSize: '15px'
+          }}>
+            <SearchOutlined style={{ fontSize: '48px', marginBottom: '16px', color: '#d9d9d9' }} />
+            <p>暂无设备数据</p>
+          </div>
+        )}
         <Table
           components={{
             header: {
@@ -1149,9 +1237,9 @@ function DeviceManagement() {
             },
           }}
           columns={columns}
-          dataSource={devices}
+          dataSource={filteredDevicesMemo}
           rowKey="deviceId"
-          loading={loading}
+          loading={loading || searching}
           pagination={pagination}
           onChange={handleTableChange}
           scroll={{ y: 600, x: 'max-content' }}

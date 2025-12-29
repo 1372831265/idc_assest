@@ -1246,7 +1246,7 @@ function RackVisualization() {
       </div>
       
       {searchKeyword && (
-        <Card size="small" style={searchCardStyle} bodyStyle={{ padding: '16px 20px' }}>
+        <Card size="small" style={searchCardStyle} styles={{ body: { padding: '16px 20px' } }}>
           <div style={{ 
             display: 'flex',
             alignItems: 'center',
@@ -1322,7 +1322,7 @@ function RackVisualization() {
         </Card>
       )}
       
-      <Card style={cardStyle} bodyStyle={{ padding: '16px 20px' }}>
+      <Card style={cardStyle} styles={{ body: { padding: '16px 20px' } }}>
         <div style={{ marginBottom: 16 }}>
           <Space wrap size={12}>
             <Button style={secondaryButtonStyle} icon={<ZoomInOutlined />} onClick={handleZoomIn}>放大</Button>

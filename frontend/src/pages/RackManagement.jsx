@@ -401,7 +401,7 @@ function RackManagement() {
         </Space>
       </div>
 
-      <Card style={cardStyle} headStyle={cardHeadStyle} bodyStyle={{ padding: '20px 24px' }}>
+      <Card style={cardStyle} styles={{ header: cardHeadStyle, body: { padding: '20px 24px' } }}>
         <Table
           columns={columns}
           dataSource={racks}
@@ -425,7 +425,7 @@ function RackManagement() {
         onCancel={handleCancel}
         footer={null}
         width={600}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           body: { padding: '24px' },
           header: { borderBottom: '1px solid #f0f0f0', padding: '16px 24px' }
@@ -538,7 +538,7 @@ function RackManagement() {
         }}
         footer={null}
         width={650}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           body: { padding: '24px' },
           header: { borderBottom: '1px solid #f0f0f0', padding: '16px 24px' }

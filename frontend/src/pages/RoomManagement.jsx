@@ -263,7 +263,7 @@ function RoomManagement() {
         </Space>
       </div>
 
-      <Card style={cardStyle} headStyle={cardHeadStyle} bodyStyle={{ padding: '20px 24px' }}>
+      <Card style={cardStyle} styles={{ header: cardHeadStyle, body: { padding: '20px 24px' } }}>
         <Table
           columns={columns}
           dataSource={rooms}
@@ -302,7 +302,7 @@ function RoomManagement() {
         onCancel={handleCancel}
         footer={null}
         width={600}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           body: { padding: '24px' },
           header: {
