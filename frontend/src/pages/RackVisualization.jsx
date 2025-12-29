@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Card, Select, Button, Space, message, Tooltip, Modal, Form, Switch, Checkbox } from 'antd';
+import { Card, Select, Button, Space, message, Tooltip, Modal, Form, Switch, Checkbox, Input, Badge, Typography } from 'antd';
 import { 
   ReloadOutlined, 
   ZoomInOutlined, 
@@ -12,11 +12,15 @@ import {
   LaptopOutlined,
   MobileOutlined,
   PrinterOutlined,
-  SettingOutlined
+  SettingOutlined,
+  SearchOutlined,
+  ClearOutlined,
+  EnvironmentOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Option } = Select;
+const { Text } = Typography;
 
 // 工具函数提取到组件外部，避免每次渲染重复创建
 const getDeviceIcon = (deviceType) => {
@@ -177,6 +181,27 @@ const initAnimationStyles = () => {
       }
     }
     
+    @keyframes highlightPulse {
+      0%, 100% {
+        box-shadow: 
+          0 0 20px rgba(56, 189, 248, 0.6),
+          0 4px 12px rgba(56, 189, 248, 0.4),
+          0 1px 2px rgba(0,0,0,0.3),
+          inset 0 1px 0 rgba(255,255,255,0.2);
+      }
+      50% {
+        box-shadow: 
+          0 0 35px rgba(56, 189, 248, 0.9),
+          0 6px 20px rgba(56, 189, 248, 0.6),
+          0 1px 2px rgba(0,0,0,0.3),
+          inset 0 1px 0 rgba(255,255,255,0.3);
+      }
+    }
+    
+    .device-highlighted {
+      animation: highlightPulse 1.5s ease-in-out infinite;
+    }
+    
     .metal-texture {
       background-image: 
         linear-gradient(90deg, 
@@ -312,6 +337,13 @@ function RackVisualization() {
   const [loadingTooltipFields, setLoadingTooltipFields] = useState(false); // 加载字段配置状态
   const [savingTooltipConfig, setSavingTooltipConfig] = useState(false); // 保存配置状态
 
+  // 设备搜索功能
+  const [searchKeyword, setSearchKeyword] = useState(''); // 搜索关键词
+  const [searchResults, setSearchResults] = useState([]); // 搜索结果
+  const [highlightedDevice, setHighlightedDevice] = useState(null); // 高亮的设备
+  const [searchMatchCount, setSearchMatchCount] = useState(0); // 匹配数量
+  const [searching, setSearching] = useState(false); // 搜索中状态
+
   // 设备详情tooltip字段配置
   const [tooltipFields, setTooltipFields] = useState({});
 
@@ -374,6 +406,11 @@ function RackVisualization() {
     }
   }, [defaultTooltipFields]);
 
+  // 初始化获取保存的字段配置
+  useEffect(() => {
+    fetchTooltipDeviceFields();
+  }, [fetchTooltipDeviceFields]);
+
   // 保存tooltip字段配置
   const saveTooltipConfig = useCallback(async () => {
     try {
@@ -399,55 +436,6 @@ function RackVisualization() {
       setSavingTooltipConfig(false);
     }
   }, [tooltipFields, fetchTooltipDeviceFields]);
-
-  // 获取所有机柜 - 使用 useCallback 避免重复创建
-  const fetchRacks = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      // 为机柜可视化页面传递较大的pageSize以获取所有机柜
-      const response = await axios.get('/api/racks', { params: { pageSize: 1000 } });
-      
-      // 验证数据结构并过滤有效机柜
-      // 机柜API返回的是包含total和racks数组的对象
-      const racksArray = response.data.racks || [];
-      const validRacks = racksArray.filter(rack => 
-        rack && 
-        typeof rack === 'object' && 
-        rack.rackId && 
-        typeof rack.height === 'number'
-      );
-      
-      setRacks(validRacks);
-      if (validRacks.length > 0) {
-        // 自动选择第一个机柜
-        const firstRack = validRacks[0];
-        setSelectedRack(firstRack);
-        
-        // 设置对应的机房
-        if (firstRack?.Room) {
-          const roomKey = firstRack.Room.roomId || firstRack.Room.id || firstRack.Room.name;
-          setSelectedRoom(roomKey);
-        }
-        
-        fetchDevices(firstRack.rackId);
-      } else {
-        setSelectedRack(null);
-        setSelectedRoom(null);
-        setDevices([]);
-        message.warning('未找到有效的机柜数据');
-      }
-    } catch (error) {
-      message.error('获取机柜列表失败');
-      console.error('获取机柜列表失败:', error);
-      setError(error);
-      setRacks([]);
-      setSelectedRack(null);
-      setDevices([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   // 获取机柜内的设备 - 使用 useCallback 避免重复创建
   const fetchDevices = useCallback(async (rackId) => {
@@ -591,6 +579,144 @@ function RackVisualization() {
       setDevices([]);
     } finally {
       setLoadingDevices(false);
+    }
+  }, []);
+
+  // 搜索设备 - 全局搜索，支持跨机柜
+  const handleSearch = useCallback(async (keyword) => {
+    setSearchKeyword(keyword);
+    
+    if (!keyword || !keyword.trim()) {
+      setSearchResults([]);
+      setHighlightedDevice(null);
+      setSearchMatchCount(0);
+      return;
+    }
+    
+    const searchLower = keyword.toLowerCase().trim();
+    setSearching(true);
+    
+    try {
+      // 调用全局搜索API，搜索所有机柜的设备
+      const response = await axios.get('/api/devices', {
+        params: { keyword: searchLower, pageSize: 100 }
+      });
+      
+      const devicesData = response.data.devices || [];
+      
+      // 构建搜索结果，包含机柜信息
+      const results = devicesData.map(device => ({
+        deviceId: device.deviceId || device.id,
+        name: device.name,
+        type: device.type,
+        rackId: device.rackId,
+        rackName: device.Rack?.name || '未知机柜',
+        roomName: device.Rack?.Room?.name || '未知机房',
+        position: device.position
+      }));
+      
+      setSearchResults(results);
+      setSearchMatchCount(results.length);
+      
+      // 如果有搜索结果，自动定位到第一个设备所在的机柜
+      if (results.length > 0) {
+        const firstResult = results[0];
+        setHighlightedDevice(firstResult.deviceId);
+        
+        // 如果设备不在当前机柜，自动切换机柜
+        if (selectedRack && firstResult.rackId !== selectedRack.rackId) {
+          const targetRack = racks.find(r => r.rackId === firstResult.rackId);
+          if (targetRack) {
+            // 找到设备所在的机房
+            if (targetRack?.Room) {
+              const roomKey = targetRack.Room.roomId || targetRack.Room.id || targetRack.Room.name;
+              if (roomKey !== selectedRoom) {
+                setSelectedRoom(roomKey);
+              }
+            }
+            
+            // 切换到设备所在的机柜
+            setSelectedRack(targetRack);
+            fetchDevices(targetRack.rackId);
+            message.info(`已跳转到机柜: ${firstResult.rackName}`);
+          }
+        } else {
+          message.info(`已定位到设备: ${firstResult.name}`);
+        }
+      } else {
+        setHighlightedDevice(null);
+        message.warning('未找到匹配的设备');
+      }
+    } catch (error) {
+      console.error('全局搜索失败:', error);
+      message.error('搜索失败，请重试');
+      setSearchResults([]);
+      setSearchMatchCount(0);
+    } finally {
+      setSearching(false);
+    }
+  }, [selectedRack, selectedRoom, racks, fetchDevices]);
+
+  // 清除搜索
+  const clearSearch = useCallback(() => {
+    setSearchKeyword('');
+    setSearchResults([]);
+    setHighlightedDevice(null);
+    setSearchMatchCount(0);
+  }, []);
+
+  // 跳转到指定设备
+  const jumpToDevice = useCallback((deviceId) => {
+    setHighlightedDevice(deviceId);
+    message.info(`已定位到设备: ${deviceId}`);
+  }, []);
+
+  // 获取所有机柜 - 使用 useCallback 避免重复创建
+  const fetchRacks = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // 为机柜可视化页面传递较大的pageSize以获取所有机柜
+      const response = await axios.get('/api/racks', { params: { pageSize: 1000 } });
+      
+      // 验证数据结构并过滤有效机柜
+      // 机柜API返回的是包含total和racks数组的对象
+      const racksArray = response.data.racks || [];
+      const validRacks = racksArray.filter(rack => 
+        rack && 
+        typeof rack === 'object' && 
+        rack.rackId && 
+        typeof rack.height === 'number'
+      );
+      
+      setRacks(validRacks);
+      if (validRacks.length > 0) {
+        // 自动选择第一个机柜
+        const firstRack = validRacks[0];
+        setSelectedRack(firstRack);
+        
+        // 设置对应的机房
+        if (firstRack?.Room) {
+          const roomKey = firstRack.Room.roomId || firstRack.Room.id || firstRack.Room.name;
+          setSelectedRoom(roomKey);
+        }
+        
+        fetchDevices(firstRack.rackId);
+      } else {
+        setSelectedRack(null);
+        setSelectedRoom(null);
+        setDevices([]);
+        message.warning('未找到有效的机柜数据');
+      }
+    } catch (error) {
+      message.error('获取机柜列表失败');
+      console.error('获取机柜列表失败:', error);
+      setError(error);
+      setRacks([]);
+      setSelectedRack(null);
+      setDevices([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -914,6 +1040,27 @@ function RackVisualization() {
         title="机柜可视化"
         extra={
           <Space>
+            <Input
+              placeholder="搜索设备名称、ID、IP..."
+              value={searchKeyword}
+              onChange={(e) => handleSearch(e.target.value)}
+              onPressEnter={(e) => handleSearch(e.target.value)}
+              style={{ width: 220 }}
+              allowClear
+              prefix={<SearchOutlined />}
+              suffix={
+                searchMatchCount > 0 ? (
+                  <Badge count={searchMatchCount} size="small" style={{ backgroundColor: '#52c41a' }} />
+                ) : null
+              }
+            />
+            {searchKeyword && (
+              <Button
+                icon={<ClearOutlined />}
+                onClick={clearSearch}
+                title="清除搜索"
+              />
+            )}
             <Select
               placeholder="选择机房"
               style={{ width: 180 }}
@@ -962,6 +1109,83 @@ function RackVisualization() {
           </Space>
         }  
       >
+        {searchKeyword && (
+          <div style={{ 
+            marginBottom: 16, 
+            padding: '12px 16px', 
+            background: searchResults.length > 0 ? 'linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)' : '#fff2f0',
+            border: `1px solid ${searchResults.length > 0 ? '#b7eb8f' : '#ffccc7'}`,
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <SearchOutlined style={{ 
+              fontSize: 18, 
+              color: searchResults.length > 0 ? '#52c41a' : '#ff4d4f'
+            }} />
+            <Text strong style={{ color: searchResults.length > 0 ? '#135200' : '#cf1322' }}>
+              {searchResults.length > 0 
+                ? `找到 ${searchResults.length} 个设备` 
+                : searching ? '搜索中...' : '未找到匹配的设备'}
+            </Text>
+            {searching && (
+              <Badge status="processing" text="正在搜索所有机柜..." />
+            )}
+            {searchResults.length > 0 && (
+              <Space wrap size={4}>
+                {searchResults.slice(0, 5).map(result => {
+                  const isCurrentRack = selectedRack && result.rackId === selectedRack.rackId;
+                  return (
+                    <Button 
+                      key={result.deviceId}
+                      size="small"
+                      type={highlightedDevice === result.deviceId ? 'primary' : 'default'}
+                      icon={<EnvironmentOutlined />}
+                      onClick={() => {
+                        // 如果设备不在当前机柜，跳转到对应机柜
+                        if (selectedRack && result.rackId !== selectedRack.rackId) {
+                          const targetRack = racks.find(r => r.rackId === result.rackId);
+                          if (targetRack) {
+                            if (targetRack?.Room) {
+                              const roomKey = targetRack.Room.roomId || targetRack.Room.id || targetRack.Room.name;
+                              if (roomKey !== selectedRoom) {
+                                setSelectedRoom(roomKey);
+                              }
+                            }
+                            setSelectedRack(targetRack);
+                            fetchDevices(targetRack.rackId);
+                            message.info(`已跳转到机柜: ${result.rackName}`);
+                          }
+                        }
+                        setHighlightedDevice(result.deviceId);
+                      }}
+                      style={{ 
+                        borderColor: highlightedDevice === result.deviceId ? '#1890ff' : undefined,
+                        background: highlightedDevice === result.deviceId ? '#1890ff' : undefined
+                      }}
+                    >
+                      <Tooltip title={`机柜: ${result.rackName}${result.roomName ? ` | 机房: ${result.roomName}` : ''} | U${result.position || '?'}`}>
+                        <span>
+                          {result.name}
+                          <Text type="secondary" style={{ fontSize: 10, marginLeft: 4 }}>
+                            U{result.position || '?'}
+                          </Text>
+                          {!isCurrentRack && (
+                            <EnvironmentOutlined style={{ marginLeft: 4, color: '#faad14' }} />
+                          )}
+                        </span>
+                      </Tooltip>
+                    </Button>
+                  );
+                })}
+                {searchResults.length > 5 && (
+                  <Text type="secondary">+ 还有 {searchResults.length - 5} 个</Text>
+                )}
+              </Space>
+            )}
+          </div>
+        )}
         <div style={{ marginBottom: 16 }}>
           <Space wrap>
             <Button icon={<ZoomInOutlined />} onClick={handleZoomIn}>放大</Button>
@@ -1333,10 +1557,13 @@ function RackVisualization() {
                         const position = device?.position || 1;
                         const height = device?.height || 1;
                         
+                        // 检查是否是高亮的设备
+                        const isHighlighted = highlightedDevice === deviceId;
+                        
                         return (
                           <div 
                             key={deviceId} 
-                            className="device"
+                            className={`device ${isHighlighted ? 'device-highlighted' : ''}`}
                             style={{
                               ...getDeviceStyle(device, selectedRack.height),
                               position: 'absolute',
@@ -1347,20 +1574,34 @@ function RackVisualization() {
                               display: 'flex',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease',
-                              boxShadow: `
-                                0 1px 2px rgba(0,0,0,0.3),
-                                0 2px 4px rgba(0,0,0,0.2),
-                                inset 0 1px 0 rgba(255,255,255,0.1),
-                                inset 0 -1px 0 rgba(0,0,0,0.1)
-                              `,
-                              background: 'linear-gradient(180deg, #3d4451 0%, #2d3139 50%, #252930 100%)',
-                              border: '1px solid #4a5568',
-                              borderTop: '1px solid #565c6b',
+                              boxShadow: isHighlighted 
+                                ? `
+                                    0 0 20px rgba(56, 189, 248, 0.6),
+                                    0 4px 12px rgba(56, 189, 248, 0.4),
+                                    0 1px 2px rgba(0,0,0,0.3),
+                                    inset 0 1px 0 rgba(255,255,255,0.2)
+                                  `
+                                : `
+                                    0 1px 2px rgba(0,0,0,0.3),
+                                    0 2px 4px rgba(0,0,0,0.2),
+                                    inset 0 1px 0 rgba(255,255,255,0.1),
+                                    inset 0 -1px 0 rgba(0,0,0,0.1)
+                                  `,
+                              background: isHighlighted
+                                ? 'linear-gradient(180deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%)'
+                                : 'linear-gradient(180deg, #3d4451 0%, #2d3139 50%, #252930 100%)',
+                              border: isHighlighted 
+                                ? '2px solid #38bdf8' 
+                                : '1px solid #4a5568',
+                              borderTop: isHighlighted
+                                ? '2px solid #7dd3fc'
+                                : '1px solid #565c6b',
                               overflow: 'hidden',
                               margin: 0,
                               padding: 0,
-                              zIndex: 100,
-                              pointerEvents: 'auto'
+                              zIndex: isHighlighted ? 200 : 100,
+                              pointerEvents: 'auto',
+                              animation: isHighlighted ? 'highlightPulse 1.5s ease-in-out infinite' : 'none'
                             }}
                             onMouseEnter={(e) => {
                               const isOneU = (device?.height || 1) === 1;
