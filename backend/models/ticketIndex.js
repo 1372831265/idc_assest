@@ -175,8 +175,11 @@ const initializeModels = async () => {
   }
 };
 
+initAssociations();
+
 module.exports = {
   initializeModels,
+  initAssociations,
   Ticket,
   TicketOperationRecord,
   FaultCategory

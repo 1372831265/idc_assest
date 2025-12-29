@@ -302,7 +302,19 @@ function TicketManagement() {
         }
       }));
 
-    return [...baseColumns, ...customFieldColumns];
+    const actionColumn = {
+      title: '操作',
+      key: 'action',
+      width: 100,
+      fixed: 'right',
+      render: (_, record) => (
+        <Dropdown trigger={['click']} overlay={getActionItems(record)}>
+          <Button type="text" icon={<MoreOutlined />} />
+        </Dropdown>
+      )
+    };
+
+    return [...baseColumns, ...customFieldColumns, actionColumn];
   }, [ticketFields]);
 
   const fetchTicketDetail = useCallback(async (ticketId) => {
