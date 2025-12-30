@@ -163,7 +163,9 @@ const initAssociations = () => {
 
 const initializeModels = async () => {
   try {
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
     await sequelize.sync({ alter: true });
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
     console.log('工单相关数据表同步完成');
 
     initAssociations();
@@ -171,6 +173,7 @@ const initializeModels = async () => {
 
     console.log('工单系统数据初始化完成');
   } catch (error) {
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
     console.error('初始化工单系统数据失败:', error);
   }
 };
