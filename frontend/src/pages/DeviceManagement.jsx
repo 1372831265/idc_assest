@@ -851,15 +851,22 @@ function DeviceManagement() {
       let errorDetails = [];
       
       if (error.response) {
-        const { data } = error.response;
-        if (data && data.errors && Array.isArray(data.errors)) {
+        const { data, status } = error.response;
+        
+        if (status === 500 && data && data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          errorDetails = data.errors.map((err) => ({
+            row: err.row || 0,
+            error: err.error || err.message || '服务器内部错误'
+          }));
+          errorMessage = `导入失败：${errorDetails[0].error}`;
+        } else if (data && data.errors && Array.isArray(data.errors)) {
           errorDetails = data.errors.map((err, index) => ({
             row: err.row || index + 1,
             error: err.error || err.message || '未知错误'
           }));
           errorMessage = `导入失败，共发现 ${errorDetails.length} 处数据错误`;
-        } else if (data && data.message) {
-          errorMessage = data.message;
+        } else if (data && (data.message || data.error)) {
+          errorMessage = data.message || data.error;
         }
       } else if (error.message) {
         errorMessage = error.message;
@@ -870,8 +877,8 @@ function DeviceManagement() {
         statistics: {
           total: 0,
           success: 0,
-          failed: 0,
-          errors: errorDetails,
+          failed: errorDetails.length > 0 ? errorDetails.length : 1,
+          errors: errorDetails.length > 0 ? errorDetails : [{ row: 0, error: errorMessage }],
           message: errorMessage
         }
       });

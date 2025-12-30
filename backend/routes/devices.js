@@ -424,12 +424,31 @@ router.post('/import', async (req, res) => {
             throw new Error(`缺少必填字段：${missingFields.join('、')}`);
           }
           
+        // 验证设备类型值
+          const validTypes = ['server', 'switch', 'router', 'storage', 'other'];
+          if (!validTypes.includes(fieldValueMap['设备类型'])) {
+            throw new Error(`设备类型无效，有效值为：${validTypes.join('、')}，当前值：${fieldValueMap['设备类型']}`);
+          }
+          
+          // 验证设备ID是否已存在
+          const existingDeviceById = await Device.findOne({
+            where: { deviceId: fieldValueMap['设备ID'] }
+          });
+          if (existingDeviceById) {
+            throw new Error(`设备ID已存在：${fieldValueMap['设备ID']}`);
+          }
+          
           // 验证序列号是否已存在
           const existingDevice = await Device.findOne({
             where: { serialNumber: fieldValueMap['序列号'] }
           });
           if (existingDevice) {
             throw new Error(`序列号已存在：${fieldValueMap['序列号']}`);
+          }
+          
+          // 验证机柜ID是否为空
+          if (!fieldValueMap['所在机柜ID'] || fieldValueMap['所在机柜ID'].trim() === '') {
+            throw new Error('所在机柜ID不能为空');
           }
           
           // 验证机柜是否存在，如果不存在则自动创建
@@ -546,17 +565,36 @@ router.post('/import', async (req, res) => {
         stats.success++;
       } catch (error) {
         stats.failed++;
-        stats.errors.push({ row: rowNum, error: error.message, data: row });
+        let errorMessage = error.message;
+        
+        if (error.name === 'SequelizeUniqueConstraintError') {
+          const errors = error.errors || [];
+          for (const err of errors) {
+            if (err.path === 'deviceId') {
+              errorMessage = `设备ID已存在`;
+              break;
+            } else if (err.path === 'serialNumber') {
+              errorMessage = `序列号已存在`;
+              break;
+            }
+          }
+        } else if (error.name === 'SequelizeValidationError') {
+          errorMessage = '数据验证失败，请检查字段格式';
+        }
+        
+        stats.errors.push({ row: rowNum, error: errorMessage, data: row });
       }
     }
     
-    // 删除临时文件
     fs.unlinkSync(filePath);
     
     res.json({ statistics: stats });
   } catch (error) {
     console.error('导入设备数据失败:', error);
-    res.status(500).json({ error: '导入设备数据失败' });
+    const errorMessage = error.message || '导入过程中发生未知错误';
+    res.status(500).json({ 
+      errors: [{ row: 0, error: errorMessage }] 
+    });
   }
 });
 
