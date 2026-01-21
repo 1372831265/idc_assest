@@ -103,7 +103,7 @@ const responsiveConfig = {
 const containerStyle = {
   minHeight: '100vh',
   background: 'linear-gradient(180deg, #f5f7fa 0%, #e8ecf1 100%)',
-  padding: '24px'
+  padding: '20px'
 };
 
 const headerStyle = {
@@ -202,7 +202,8 @@ const STAT_CARD_BASE_STYLE = {
   overflow: 'hidden',
   cursor: 'pointer',
   height: '100%',
-  animation: 'fadeInUp 0.6s ease-out backwards'
+  animation: 'fadeInUp 0.6s ease-out backwards',
+  borderLeft: '4px solid transparent'
 };
 
 const STAT_ICON_CONTAINER_BASE = {
@@ -217,15 +218,6 @@ const STAT_ICON_CONTAINER_BASE = {
   justifyContent: 'center',
   fontSize: '32px',
   transition: `all ${designTokens.transitions.normal}`
-};
-
-const TOP_BORDER_BASE = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  height: '4px',
-  borderRadius: `${designTokens.borderRadius.large} ${designTokens.borderRadius.large} 0 0`
 };
 
 const NAV_BUTTON_BASE = {
@@ -256,17 +248,12 @@ const NAV_ICON_CONTAINER_BASE = {
 
 const createStatCardStyle = (color) => ({
   ...STAT_CARD_BASE_STYLE,
-  borderTop: `4px solid ${color}`
+  borderLeftColor: color
 });
 
 const createStatIconContainer = (color) => ({
   ...STAT_ICON_CONTAINER_BASE,
   background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`
-});
-
-const createTopBorderStyle = (color) => ({
-  ...TOP_BORDER_BASE,
-  background: `linear-gradient(90deg, ${color}, ${color}80)`
 });
 
 const createNavButtonStyle = (color) => ({
@@ -664,7 +651,7 @@ function Dashboard() {
   const statCards = useMemo(() => [
     {
       key: 'devices',
-      xs: 24, sm: 12, lg: 6, xl: 4,
+      xs: 24, sm: 12, md: 8, lg: 6, xl: 4,
       icon: CloudServerOutlined,
       color: designTokens.colors.primary.main,
       statKey: 'totalDevices',
@@ -675,7 +662,7 @@ function Dashboard() {
     },
     {
       key: 'racks',
-      xs: 24, sm: 12, lg: 6, xl: 4,
+      xs: 24, sm: 12, md: 8, lg: 6, xl: 4,
       icon: DatabaseOutlined,
       color: designTokens.colors.purple.main,
       statKey: 'totalRacks',
@@ -687,7 +674,7 @@ function Dashboard() {
     },
     {
       key: 'rooms',
-      xs: 24, sm: 12, lg: 6, xl: 4,
+      xs: 24, sm: 12, md: 8, lg: 6, xl: 4,
       icon: HomeOutlined,
       color: designTokens.colors.success.main,
       statKey: 'totalRooms',
@@ -699,7 +686,7 @@ function Dashboard() {
     },
     {
       key: 'faults',
-      xs: 24, sm: 12, lg: 6, xl: 4,
+      xs: 24, sm: 12, md: 8, lg: 6, xl: 4,
       icon: WarningOutlined,
       color: designTokens.colors.error.main,
       statKey: 'faultDevices',
@@ -710,7 +697,7 @@ function Dashboard() {
     },
     {
       key: 'users',
-      xs: 24, sm: 12, lg: 6, xl: 4,
+      xs: 24, sm: 12, md: 8, lg: 6, xl: 4,
       icon: TeamOutlined,
       color: designTokens.colors.cyan.main,
       statKey: 'totalUsers',
@@ -721,7 +708,7 @@ function Dashboard() {
     },
     {
       key: 'tickets',
-      xs: 24, sm: 12, lg: 6, xl: 4,
+      xs: 24, sm: 12, md: 8, lg: 6, xl: 4,
       icon: BarChartOutlined,
       color: '#fa8c16',
       statKey: 'activeTickets',
@@ -749,7 +736,6 @@ function Dashboard() {
           onMouseLeave={() => setHoveredCard(null)}
         >
           <div style={{ position: 'relative' }}>
-            <div style={createTopBorderStyle(color)} />
             <div style={createStatIconContainer(color)}>
               <Icon style={{ color }} />
             </div>
@@ -929,8 +915,8 @@ function Dashboard() {
           {statCards.map(renderStatCard)}
         </Row>
 
-        <Row gutter={[24, 24]} style={{ marginBottom: '32px' }}>
-          <Col xs={24} lg={8}>
+        <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
+          <Col xs={24} md={8}>
             <Card style={progressCardStyle}>
               <div style={{ padding: '20px' }}>
                 <Title level={5} style={{ margin: '0 0 20px 0', color: designTokens.colors.text.primary }}>
@@ -953,7 +939,7 @@ function Dashboard() {
             </Card>
           </Col>
 
-          <Col xs={24} lg={8}>
+          <Col xs={24} md={8}>
             <Card style={progressCardStyle}>
               <div style={{ padding: '20px' }}>
                 <Title level={5} style={{ margin: '0 0 20px 0', color: designTokens.colors.text.primary }}>
@@ -973,7 +959,7 @@ function Dashboard() {
             </Card>
           </Col>
 
-          <Col xs={24} lg={8}>
+          <Col xs={24} md={8}>
             <Card style={progressCardStyle}>
               <div style={{ padding: '20px' }}>
                 <Title level={5} style={{ margin: '0 0 20px 0', color: designTokens.colors.text.primary }}>
@@ -995,63 +981,69 @@ function Dashboard() {
         <div>
           <Card style={overviewCardStyle}>
             <div style={{ padding: '24px' }}>
-              <div className="welcome-banner" style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: designTokens.borderRadius.medium,
-                padding: '28px',
-                color: '#fff',
-                marginBottom: '24px',
-                animation: 'fadeInUp 0.6s ease-out 0.4s backwards'
-              }}>
-                <h2 style={{
-                  fontSize: '1.4rem',
-                  fontWeight: '600',
-                  margin: '0 0 8px 0',
-                  color: '#fff'
-                }}>
-                  欢迎使用IDC设备管理系统
-                </h2>
-                <p style={{
-                  fontSize: '1rem',
-                  margin: '0',
-                  opacity: '0.9',
-                  color: '#fff'
-                }}>
-                  专业的机房设备管理解决方案，提供全方位的设备监控和管理能力
-                </p>
-              </div>
-
-              <div style={{ ...quickStatsStyle, animation: 'fadeInUp 0.6s ease-out 0.5s backwards' }}>
-                {quickStats.map((stat, index) => (
-                  <div key={index} style={quickStatItemStyle}>
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: designTokens.borderRadius.medium,
-                      background: `linear-gradient(135deg, ${stat.color}20 0%, ${stat.color}10 100%)`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '24px',
-                      color: stat.color,
-                      boxShadow: `0 4px 12px ${stat.color}20`
+              <Row gutter={[24, 24]}>
+                <Col xs={24} md={16}>
+                  <div className="welcome-banner" style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: designTokens.borderRadius.medium,
+                    padding: '28px',
+                    color: '#fff',
+                    marginBottom: '24px',
+                    animation: 'fadeInUp 0.6s ease-out 0.4s backwards'
+                  }}>
+                    <h2 style={{
+                      fontSize: '1.4rem',
+                      fontWeight: '600',
+                      margin: '0 0 8px 0',
+                      color: '#fff'
                     }}>
-                      <stat.icon />
-                    </div>
-                    <div>
-                      <Text style={{ color: designTokens.colors.text.secondary, fontSize: '0.85rem' }}>{stat.label}</Text>
-                      <div style={{ fontSize: '1.2rem', fontWeight: '700', color: designTokens.colors.text.primary }}>{stat.value}</div>
-                    </div>
+                      欢迎使用IDC设备管理系统
+                    </h2>
+                    <p style={{
+                      fontSize: '1rem',
+                      margin: '0',
+                      opacity: '0.9',
+                      color: '#fff'
+                    }}>
+                      专业的机房设备管理解决方案，提供全方位的设备监控和管理能力
+                    </p>
                   </div>
-                ))}
-              </div>
+
+                  <div style={{ ...quickStatsStyle, marginBottom: '0', animation: 'fadeInUp 0.6s ease-out 0.5s backwards' }}>
+                    {quickStats.map((stat, index) => (
+                      <div key={index} style={quickStatItemStyle}>
+                        <div style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: designTokens.borderRadius.medium,
+                          background: `linear-gradient(135deg, ${stat.color}20 0%, ${stat.color}10 100%)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '24px',
+                          color: stat.color,
+                          boxShadow: `0 4px 12px ${stat.color}20`
+                        }}>
+                          <stat.icon />
+                        </div>
+                        <div>
+                          <Text style={{ color: designTokens.colors.text.secondary, fontSize: '0.85rem' }}>{stat.label}</Text>
+                          <div style={{ fontSize: '1.2rem', fontWeight: '700', color: designTokens.colors.text.primary }}>{stat.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Col>
+
+                <Col xs={24} md={8}>
+                  <div style={{ animation: 'fadeInUp 0.6s ease-out 0.5s backwards' }}>
+                    {systemInfo}
+                  </div>
+                </Col>
+              </Row>
 
               <div style={{ ...navigationGridStyle, animation: 'fadeInUp 0.6s ease-out 0.6s backwards' }}>
                 {navButtons}
-              </div>
-
-              <div style={{ animation: 'fadeInUp 0.6s ease-out 0.7s backwards' }}>
-                {systemInfo}
               </div>
             </div>
           </Card>
