@@ -10,10 +10,13 @@ import {
   FullscreenOutlined, CompressOutlined, EyeOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
+import DeviceComponent from '../components/DeviceComponent';
+import './RackVisualization.css';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
 
+// 设计令牌定义
 const designTokens = {
   colors: {
     primary: {
@@ -40,14 +43,6 @@ const designTokens = {
       light: '#f87171',
       dark: '#b91c1c'
     },
-    purple: {
-      main: '#8b5cf6',
-      gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
-    },
-    cyan: {
-      main: '#06b6d4',
-      gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
-    },
     text: {
       primary: '#1e293b',
       secondary: '#64748b',
@@ -70,10 +65,7 @@ const designTokens = {
       switch: '#22c55e',
       router: '#f59e0b',
       storage: '#8b5cf6',
-      firewall: '#ef4444',
-      ups: '#14b8a6',
-      pdu: '#64748b',
-      other: '#94a3b8'
+      other: '#64748b'
     },
     status: {
       normal: '#10b981',
@@ -85,73 +77,50 @@ const designTokens = {
       maintenance: '#3b82f6'
     }
   },
-  shadows: {
-    small: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-    medium: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
-    large: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
-    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-    glow: '0 0 20px rgba(102, 126, 234, 0.3)'
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32
   },
   borderRadius: {
-    small: '6px',
-    medium: '10px',
-    large: '16px',
-    xl: '24px',
-    round: '50%'
+    small: 6,
+    medium: 10,
+    large: 16,
+    xl: 24
   },
   transitions: {
     fast: '150ms cubic-bezier(0.4, 0, 0.2, 1)',
     normal: '300ms cubic-bezier(0.4, 0, 0.2, 1)',
     slow: '500ms cubic-bezier(0.4, 0, 0.2, 1)'
   },
-  spacing: {
-    xs: '4px',
-    sm: '8px',
-    md: '16px',
-    lg: '24px',
-    xl: '32px'
+  shadows: {
+    small: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+    medium: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+    large: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)'
   }
 };
 
-const pageContainerStyle = {
-  minHeight: '100vh',
-  background: designTokens.colors.background.secondary,
-  padding: designTokens.spacing.lg
-};
+// 移除内联样式函数，使用CSS类
 
-const headerStyle = {
-  marginBottom: designTokens.spacing.lg,
-  padding: `${designTokens.spacing.lg}px ${designTokens.spacing.xl}px`,
-  background: designTokens.colors.primary.gradient,
-  borderRadius: designTokens.borderRadius.large,
-  boxShadow: designTokens.shadows.large,
-  color: designTokens.colors.text.inverse
-};
-
+// 卡片样式定义
 const cardStyle = {
   borderRadius: designTokens.borderRadius.large,
   border: 'none',
   boxShadow: designTokens.shadows.medium,
-  background: designTokens.colors.background.primary,
+  background: '#fff',
   overflow: 'hidden'
 };
 
-const filterCardStyle = {
-  borderRadius: designTokens.borderRadius.medium,
-  border: 'none',
-  boxShadow: designTokens.shadows.small,
-  background: designTokens.colors.background.primary,
-  marginBottom: designTokens.spacing.lg
-};
-
+// 按钮样式定义
 const primaryButtonStyle = {
-  height: '40px',
-  borderRadius: designTokens.borderRadius.medium,
+  height: '42px',
+  borderRadius: '10px',
   background: designTokens.colors.primary.gradient,
   border: 'none',
-  boxShadow: designTokens.shadows.medium,
-  fontWeight: '500',
-  transition: `all ${designTokens.transitions.normal}`
+  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.35)',
+  fontWeight: '500'
 };
 
 const secondaryButtonStyle = {
@@ -161,14 +130,6 @@ const secondaryButtonStyle = {
   background: designTokens.colors.background.primary,
   transition: `all ${designTokens.transitions.fast}`
 };
-
-const statCardStyle = () => ({
-  background: 'rgba(255, 255, 255, 0.15)',
-  borderRadius: designTokens.borderRadius.medium,
-  padding: `${designTokens.spacing.md}px`,
-  border: '1px solid rgba(255, 255, 255, 0.2)',
-  backdropFilter: 'blur(10px)'
-});
 
 // 工具函数提取到组件外部，避免每次渲染重复创建
 const getDeviceIcon = (deviceType) => {
@@ -373,149 +334,6 @@ const getDeviceTypeTheme = (type) => {
   return themeMap.other;
 };
 
-// 初始化动画样式
-const initAnimationStyles = () => {
-  const existingStyle = document.getElementById('rack-visualization-styles');
-  if (existingStyle) {
-    return existingStyle;
-  }
-  
-  const style = document.createElement('style');
-  style.id = 'rack-visualization-styles';
-  style.textContent = `
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-50%) translateX(20px) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(-50%) translateX(0) scale(1);
-      }
-    }
-    
-    @keyframes ledBlink {
-      0%, 50% { opacity: 1; }
-      51%, 100% { opacity: 0.3; }
-    }
-    
-    @keyframes tooltipFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-50%) translateX(-10px) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(-50%) translateX(0) scale(1);
-      }
-    }
-    
-    @keyframes highlightPulse {
-      0%, 100% {
-        box-shadow: 
-          0 0 20px rgba(56, 189, 248, 0.6),
-          0 4px 12px rgba(56, 189, 248, 0.4),
-          0 1px 2px rgba(0,0,0,0.3),
-          inset 0 1px 0 rgba(255,255,255,0.2);
-      }
-      50% {
-        box-shadow: 
-          0 0 35px rgba(56, 189, 248, 0.9),
-          0 6px 20px rgba(56, 189, 248, 0.6),
-          0 1px 2px rgba(0,0,0,0.3),
-          inset 0 1px 0 rgba(255,255,255,0.3);
-      }
-    }
-    
-    .device-highlighted {
-      animation: highlightPulse 1.5s ease-in-out infinite;
-    }
-    
-    .metal-texture {
-      background-image: 
-        linear-gradient(90deg, 
-          transparent 0%, 
-          rgba(255,255,255,0.03) 50%, 
-          transparent 100%),
-        repeating-linear-gradient(0deg,
-          transparent 0px,
-          rgba(255,255,255,0.02) 1px,
-          transparent 2px,
-          transparent 3px);
-      background-size: 100% 100%, 4px 4px;
-    }
-    
-    .ventilation-grille {
-      background-image: repeating-linear-gradient(
-        0deg,
-        #334155 0px,
-        #334155 1px,
-        transparent 1px,
-        transparent 2px
-      );
-    }
-    
-    .device-hover {
-      background: linear-gradient(145deg, #1e293b, #0f172a) !important;
-      box-shadow: 0 6px 16px rgba(56, 189, 248, 0.3), 0 0 12px rgba(56, 189, 248, 0.2) !important;
-      border-color: #38bdf8 !important;
-    }
-    
-    .device-tooltip {
-      background: rgba(0, 0, 0, 0.9);
-      color: #5eead4;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-family: 'Roboto Mono', monospace;
-      font-size: 11px;
-      border: 1px solid rgba(94, 234, 212, 0.3);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-      white-space: nowrap;
-    }
-    
-    .device-count-badge {
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.2));
-      color: #38bdf8;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-      white-space: nowrap;
-      font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-    }
-
-    @media (max-width: 768px) {
-      .device-tooltip {
-        font-size: 10px;
-        padding: 6px 10px;
-      }
-
-      .device-count-badge {
-        padding: 4px 10px;
-        font-size: 11px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .device-tooltip {
-        font-size: 9px;
-        padding: 4px 8px;
-      }
-
-      .device-count-badge {
-        padding: 3px 8px;
-        font-size: 10px;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-  return style;
-};
-
 // 错误边界组件
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -534,30 +352,14 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          width: '100%',
-          height: '600px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: '#f5f5f5',
-          padding: '20px'
-        }}>
-          <h2 style={{ color: '#f44336' }}>可视化组件出错了</h2>
-          <p style={{ color: '#666', margin: '10px 0' }}>
+        <div className="error-boundary">
+          <h2 className="error-boundary-title">可视化组件出错了</h2>
+          <p className="error-boundary-message">
             错误信息: {this.state.error?.toString()}
           </p>
           <button
+            className="error-boundary-reload-button"
             onClick={() => window.location.reload()}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#1890ff',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
           >
             重新加载
           </button>
@@ -576,7 +378,7 @@ function RackVisualization() {
   const [loading, setLoading] = useState(true);
   const [devices, setDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
-  const [zoom, setZoom] = useState(1.5);
+  const [zoom, setZoom] = useState(1.7);
   const [rotation, setRotation] = useState(0);
   const [error, setError] = useState(null);
   const [deviceTooltip, setDeviceTooltip] = useState(null); // 设备详情tooltip
@@ -589,6 +391,7 @@ function RackVisualization() {
   const [tooltipDeviceFields, setTooltipDeviceFields] = useState([]); // 设备字段配置
   const [loadingTooltipFields, setLoadingTooltipFields] = useState(false); // 加载字段配置状态
   const [savingTooltipConfig, setSavingTooltipConfig] = useState(false); // 保存配置状态
+  const [deviceCache, setDeviceCache] = useState({}); // 设备数据缓存，键为rackId，值为设备数据
 
   // 设备搜索功能
   const [searchKeyword, setSearchKeyword] = useState(''); // 搜索关键词
@@ -614,10 +417,7 @@ function RackVisualization() {
     power: { label: '功率', enabled: true, field: 'power', fieldType: 'number' }
   }), []);
 
-  // 初始化样式
-  useEffect(() => {
-    initAnimationStyles();
-  }, []);
+  // 移除初始化样式的useEffect，因为样式已移至CSS文件
 
   // 获取设备字段配置 - 使用 useCallback 避免重复创建
   const fetchTooltipDeviceFields = useCallback(async () => {
@@ -692,6 +492,14 @@ function RackVisualization() {
 
   // 获取机柜内的设备 - 使用 useCallback 避免重复创建
   const fetchDevices = useCallback(async (rackId) => {
+    // 先检查缓存中是否已有数据
+    if (deviceCache[rackId]) {
+      console.log(`=== 从缓存获取机柜 ${rackId} 的设备数据 ===`);
+      setDevices(deviceCache[rackId]);
+      setLoadingDevices(false);
+      return;
+    }
+    
     try {
       setLoadingDevices(true);
       console.log(`=== 开始获取机柜 ${rackId} 的设备数据 ===`);
@@ -749,6 +557,8 @@ function RackVisualization() {
         console.warn('3. 数据库查询条件问题');
         message.warning(`机柜 ${rackId} 暂无设备数据`);
         setDevices([]);
+        // 将空数据也存入缓存，避免重复请求
+        setDeviceCache(prev => ({ ...prev, [rackId]: [] }));
         return;
       }
       
@@ -822,6 +632,9 @@ function RackVisualization() {
       console.log('最终有效设备列表:', validDevices);
       setDevices(validDevices);
       
+      // 将处理后的数据存入缓存
+      setDeviceCache(prev => ({ ...prev, [rackId]: validDevices }));
+      
       if (validDevices.length === 0) {
         console.warn('未找到有效设备数据');
         message.warning('该机柜内暂无设备数据');
@@ -833,7 +646,7 @@ function RackVisualization() {
     } finally {
       setLoadingDevices(false);
     }
-  }, []);
+  }, [deviceCache]);
 
   // 搜索设备 - 全局搜索，支持跨机柜
   const handleSearch = useCallback(async (keyword) => {
@@ -890,7 +703,7 @@ function RackVisualization() {
             
             // 切换到设备所在的机柜
             setSelectedRack(targetRack);
-            fetchDevices(targetRack.rackId);
+            // 不再直接调用fetchDevices，由useEffect处理
             message.info(`已跳转到机柜: ${firstResult.rackName}`);
           }
         } else {
@@ -954,7 +767,7 @@ function RackVisualization() {
           setSelectedRoom(roomKey);
         }
         
-        fetchDevices(firstRack.rackId);
+        // 不再直接调用fetchDevices，由useEffect处理
       } else {
         setSelectedRack(null);
         setSelectedRoom(null);
@@ -976,6 +789,36 @@ function RackVisualization() {
   useEffect(() => {
     fetchRacks();
   }, [fetchRacks]);
+
+  // 使用useMemo缓存处理后的设备数据，只有当rackId变化时才重新处理
+  const processedDevices = useMemo(() => {
+    if (!devices || !devices.length) {
+      return [];
+    }
+    
+    // 处理设备数据，添加必要的计算属性
+    return devices.map(device => {
+      // 计算设备在机柜中的位置（用于可视化）
+      const calculatedPosition = {
+        top: device.position,
+        height: device.height
+      };
+      
+      return {
+        ...device,
+        calculatedPosition
+      };
+    });
+  }, [devices]);
+
+  // 当selectedRack变化时，获取对应机柜的设备数据
+  useEffect(() => {
+    if (selectedRack?.rackId) {
+      fetchDevices(selectedRack.rackId);
+    } else {
+      setDevices([]);
+    }
+  }, [selectedRack, fetchDevices]);
 
   // 打开字段配置模态框时获取数据
   const handleOpenTooltipConfig = () => {
@@ -1072,25 +915,12 @@ function RackVisualization() {
       marks.push(
         <div 
           key={i} 
-          className="u-mark"
+          className={`u-mark-line ${i % 5 === 0 ? 'five' : ''}`}
           style={{
-            top: `${(height - i) * uHeight}px`,
-            height: '1px',
-            backgroundColor: i % 5 === 0 ? '#81c784' : '#a5d6a7',
-            width: '100%',
-            position: 'absolute',
-            borderTop: i % 5 === 0 ? '2px solid #81c784' : '1px solid #a5d6a7'
+            top: `${(height - i) * uHeight}px`
           }}
         >
-          <span style={{
-            position: 'absolute',
-            left: '-40px',
-            top: '-12px',
-            fontSize: '12px',
-            color: i % 5 === 0 ? '#2e7d32' : '#4caf50',
-            fontWeight: i % 5 === 0 ? 'bold' : 'normal',
-            textShadow: '1px 1px 1px rgba(255,255,255,0.8)'
-          }}>
+          <span className={`u-mark-text ${i % 5 === 0 ? 'five' : ''}`}>
             {i}
           </span>
         </div>
@@ -1106,38 +936,28 @@ function RackVisualization() {
     const uHeight = 25;
     
     for (let u = 1; u <= height; u++) {
+      // 调整U位标记定位，确保U1在机柜底部，U42在顶部
       const topPosition = (height - u) * uHeight;
       
       marks.push(
-        <div key={`left-${u}`}>
-          <div 
-            style={{
-              position: 'absolute',
-              top: `${topPosition}px`,
-              left: '0',
-              width: '16px',
-              height: `${uHeight}px`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: u % 5 === 0 ? '#38bdf8' : '#cbd5e1',
-              fontSize: '10px',
-              fontWeight: u % 5 === 0 ? '700' : '500',
-              textShadow: u % 5 === 0 ? '0 0 10px rgba(56, 189, 248, 0.6)' : '0 0 4px rgba(0, 0, 0, 0.5)',
-              zIndex: 30,
-              backgroundColor: u % 5 === 0 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(30, 41, 59, 0.8)',
-              borderRadius: '3px',
-              border: u % 5 === 0 ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(148, 163, 184, 0.2)',
-              boxShadow: u % 5 === 0 ? '0 0 8px rgba(56, 189, 248, 0.3)' : 'inset 0 0 4px rgba(0, 0, 0, 0.3)'
-            }}
-          >
-            {u}
-          </div>
+        <div 
+          key={`left-${u}`} 
+          className="u-mark"
+          style={{
+            top: `${topPosition}px`,
+            height: `${uHeight}px`
+          }}
+        >
+          {u}
         </div>
       );
     }
     
-    return marks;
+    return (
+      <div className="u-marks-container left">
+        {marks}
+      </div>
+    );
   };
 
   // 生成右侧U数标记（从U1开始显示）
@@ -1146,38 +966,28 @@ function RackVisualization() {
     const uHeight = 25;
     
     for (let u = 1; u <= height; u++) {
+      // 调整U位标记定位，确保U1在机柜底部，U42在顶部
       const topPosition = (height - u) * uHeight;
       
       marks.push(
-        <div key={`right-${u}`}>
-          <div 
-            style={{
-              position: 'absolute',
-              top: `${topPosition}px`,
-              right: '0',
-              width: '16px',
-              height: `${uHeight}px`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: u % 5 === 0 ? '#38bdf8' : '#cbd5e1',
-              fontSize: '10px',
-              fontWeight: u % 5 === 0 ? '700' : '500',
-              textShadow: u % 5 === 0 ? '0 0 10px rgba(56, 189, 248, 0.6)' : '0 0 4px rgba(0, 0, 0, 0.5)',
-              zIndex: 30,
-              backgroundColor: u % 5 === 0 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(30, 41, 59, 0.8)',
-              borderRadius: '3px',
-              border: u % 5 === 0 ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(148, 163, 184, 0.2)',
-              boxShadow: u % 5 === 0 ? '0 0 8px rgba(56, 189, 248, 0.3)' : 'inset 0 0 4px rgba(0, 0, 0, 0.3)'
-            }}
-          >
-            {u}
-          </div>
+        <div 
+          key={`right-${u}`} 
+          className="u-mark"
+          style={{
+            top: `${topPosition}px`,
+            height: `${uHeight}px`
+          }}
+        >
+          {u}
         </div>
       );
     }
     
-    return marks;
+    return (
+      <div className="u-marks-container right">
+        {marks}
+      </div>
+    );
   };
 
   // 获取机房列表
@@ -1231,7 +1041,7 @@ function RackVisualization() {
     const rack = racks.find(r => r.rackId === rackId);
     if (rack) {
       setSelectedRack(rack);
-      fetchDevices(rackId);
+      // 不再直接调用fetchDevices，由useEffect处理
     }
   };
 
@@ -1288,15 +1098,9 @@ function RackVisualization() {
   // 无需额外的初始化，CSS 3D变换直接在JSX中实现
 
   return (
-    <div style={pageContainerStyle}>
-      <div style={headerStyle}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: designTokens.spacing.lg
-        }}>
+    <div className="page-container">
+      <div className="header">
+        <div className="header-content">
           <div>
             <Title level={3} style={{ margin: 0, color: '#fff', fontWeight: 700 }}>
               <CloudServerOutlined style={{ marginRight: designTokens.spacing.sm, fontSize: '28px' }} />
@@ -1308,13 +1112,13 @@ function RackVisualization() {
           </div>
           <Row gutter={[designTokens.spacing.md, designTokens.spacing.md]} style={{ textAlign: 'center' }}>
             <Col>
-              <div style={statCardStyle()}>
+              <div className="stat-card">
                 <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', display: 'block' }}>机柜总数</Text>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff' }}>{racks.length}</div>
               </div>
             </Col>
             <Col>
-              <div style={statCardStyle()}>
+              <div className="stat-card">
                 <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', display: 'block' }}>设备总数</Text>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff' }}>
                   {racks.reduce((sum, rack) => sum + (rack.deviceCount || 0), 0)}
@@ -1322,7 +1126,7 @@ function RackVisualization() {
               </div>
             </Col>
             <Col>
-              <div style={statCardStyle()}>
+              <div className="stat-card">
                 <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', display: 'block' }}>在线设备</Text>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff' }}>
                   {devices.filter(d => d.status === 'running' || d.status === 'normal').length}
@@ -1333,30 +1137,25 @@ function RackVisualization() {
         </div>
       </div>
 
-      <Card style={filterCardStyle} styles={{ body: { padding: `${designTokens.spacing.md}px ${designTokens.spacing.lg}px` } }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: designTokens.spacing.md,
-          flexWrap: 'wrap'
-        }}>
+      <Card className="filter-card" styles={{ body: { padding: '16px 24px' } }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <Input
             placeholder="搜索设备名称、ID、IP..."
             value={searchKeyword}
             onChange={(e) => handleSearch(e.target.value)}
             onPressEnter={(e) => handleSearch(e.target.value)}
-            style={{ width: 240, height: '40px', borderRadius: designTokens.borderRadius.medium }}
+            style={{ width: 240, height: '40px', borderRadius: '10px' }}
             allowClear
             prefix={<SearchOutlined />}
             suffix={
               searchMatchCount > 0 ? (
-                <Badge count={searchMatchCount} size="small" style={{ backgroundColor: designTokens.colors.success.main }} />
+                <Badge count={searchMatchCount} size="small" style={{ backgroundColor: '#10b981' }} />
               ) : null
             }
           />
           {searchKeyword && (
             <Button
-              style={secondaryButtonStyle}
+              className="secondary-button"
               icon={<ClearOutlined />}
               onClick={clearSearch}
               title="清除搜索"
@@ -1364,7 +1163,7 @@ function RackVisualization() {
           )}
           <Select
             placeholder="选择机房"
-            style={{ width: 180, height: '40px', borderRadius: designTokens.borderRadius.medium }}
+            style={{ width: 180, height: '40px', borderRadius: '10px' }}
             value={selectedRoom}
             onChange={handleRoomChange}
             loading={loading}
@@ -1379,7 +1178,7 @@ function RackVisualization() {
           </Select>
           <Select
             placeholder="选择机柜"
-            style={{ width: 200, height: '40px', borderRadius: designTokens.borderRadius.medium }}
+            style={{ width: 200, height: '40px', borderRadius: '10px' }}
             value={selectedRack?.rackId}
             onChange={handleRackChange}
             loading={loading || loadingDevices}
@@ -1393,7 +1192,7 @@ function RackVisualization() {
             ))}
           </Select>
           <Button
-            style={secondaryButtonStyle}
+            className="secondary-button"
             icon={<ReloadOutlined />}
             onClick={handleReload}
             loading={loading}
@@ -1402,7 +1201,7 @@ function RackVisualization() {
             刷新
           </Button>
           <Button
-            style={showTooltipConfig ? primaryButtonStyle : secondaryButtonStyle}
+            className={showTooltipConfig ? 'primary-button' : 'secondary-button'}
             icon={<SettingOutlined />}
             onClick={handleOpenTooltipConfig}
             type={showTooltipConfig ? 'primary' : 'default'}
@@ -1413,17 +1212,8 @@ function RackVisualization() {
       </Card>
 
       {searchKeyword && (
-        <Card style={{
-          ...filterCardStyle,
-          background: designTokens.colors.success.gradient,
-          borderRadius: designTokens.borderRadius.medium
-        }} styles={{ body: { padding: `${designTokens.spacing.md}px ${designTokens.spacing.lg}px` } }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: designTokens.spacing.md,
-            flexWrap: 'wrap'
-          }}>
+        <Card className="search-result-card" styles={{ body: { padding: '16px 24px' } }}>
+          <div className="search-result-content">
             <SearchOutlined style={{
               fontSize: 20,
               color: '#fff'
@@ -1457,7 +1247,7 @@ function RackVisualization() {
                               }
                             }
                             setSelectedRack(targetRack);
-                            fetchDevices(targetRack.rackId);
+                            // 不再直接调用fetchDevices，由useEffect处理
                             message.info(`已跳转到机柜: ${result.rackName}`);
                           }
                         }
@@ -1595,265 +1385,94 @@ function RackVisualization() {
         
         <ErrorBoundary>
           {loading ? (
-            <div style={{ 
-              width: '100%', 
-              height: '600px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: '#fafafa',
-              fontSize: '16px',
-              color: '#666',
-              borderRadius: '12px'
-            }}>
-              加载机柜数据中...
+            <div className="loading-container">
+              <Spin size="large" tip="加载机柜数据中..." />
             </div>
           ) : selectedRack ? (
             <div 
-              className="rack-visualization-container"
+              className={`rack-visualization-container ${backgroundType === 'image' ? 'image-background' : ''}`}
               style={{ 
-                width: '100%',
-                height: 'calc(100vh - 280px)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                perspective: '1000px',
-                overflow: 'auto',
-                backgroundColor: '#fafafa',
                 background: backgroundType === 'image' && backgroundImage 
                   ? `url(${backgroundImage})`
                   : 'linear-gradient(180deg, #f8fffe 0%, #f0fdf4 50%, #e6fffa 100%)',
-                backgroundSize: backgroundType === 'image' ? backgroundSize : 'auto',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                position: 'relative',
-                borderRadius: '12px',
-                border: '1px solid #e8e8e8',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                transition: 'all 0.3s ease',
-                padding: '20px',
-                boxSizing: 'border-box',
-                flexShrink: 0
+                backgroundSize: backgroundType === 'image' ? backgroundSize : 'auto'
               }}>
               {loadingDevices && (
-                <div style={{ 
-                  position: 'absolute', 
-                  top: '50%', 
-                  left: '50%', 
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: 1000
-                }}>
-                  <div style={{ 
-                    padding: '20px', 
-                    backgroundColor: 'rgba(255, 255, 255, 0.8)', 
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    color: '#666'
-                  }}>
-                    加载设备数据中...
-                  </div>
+                <div className="device-loading-container">
+                  <Spin size="default" tip="加载设备数据中..." />
                 </div>
               )}
               <div 
-                style={{
-                  transform: `scale(${zoom})`,
-                  transition: 'transform 0.3s ease',
-                  position: 'relative',
-                  margin: '0 auto',
-                  padding: '40px 50px', // 为U数标记预留空间
-                  willChange: 'transform, scale'
-                }}
+                className="rack-container"
+                style={{ transform: `scale(${zoom})` }}
               >
                 {/* 机柜主体 */}
-                <div style={{
-                  position: 'relative',
-                  width: '600px',
-                  height: `${selectedRack.height * 25}px`,
-                  background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 50%, #1e293b 100%)',
-                  border: '2px solid #38bdf8',
-                  borderRadius: '12px',
-                  boxShadow: `
-                    0 0 40px rgba(56, 189, 248, 0.2),
-                    0 0 80px rgba(56, 189, 248, 0.1),
-                    0 20px 60px rgba(0, 0, 0, 0.5),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-                    inset 0 0 60px rgba(56, 189, 248, 0.05)
-                  `,
-                  overflow: 'visible',
-                  backdropFilter: 'blur(10px)'
-                }}>
+                <div className="rack" style={{ height: `${selectedRack.height * 25}px` }}>
                   {/* 扫描线效果 */}
                   <div className="scan-effect" style={{ top: '0' }} />
                   
                   {/* 玻璃光泽效果 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: '0',
-                    right: '0',
-                    height: '50%',
-                    background: 'linear-gradient(180deg, rgba(56, 189, 248, 0.03) 0%, transparent 100%)',
-                    borderRadius: '10px 10px 0 0',
-                    pointerEvents: 'none'
-                  }} />
+                  <div className="rack-glass-effect" />
                   {/* 左侧U数标记 - 贴紧机架边缘 */}
-                  <div style={{
-                    position: 'absolute',
-                    left: '-18px',
-                    top: '3px',
-                    width: '18px',
-                    bottom: '3px',
-                    zIndex: 20,
-                    pointerEvents: 'none'
-                  }}>
+                  <div className="u-marks-container left">
                     {generateLeftUMarks(selectedRack.height)}
                   </div>
                   
                   {/* 右侧U数标记 - 贴紧机架边缘 */}
-                  <div style={{
-                    position: 'absolute',
-                    right: '-18px',
-                    top: '3px',
-                    width: '18px',
-                    bottom: '3px',
-                    zIndex: 20,
-                    pointerEvents: 'none'
-                  }}>
+                  <div className="u-marks-container right">
                     {generateRightUMarks(selectedRack.height)}
                   </div>
                   
                   {/* 左侧U型安装导轨 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '3px',
-                    left: '33px',
-                    width: '15px',
-                    bottom: '3px',
-                    background: 'linear-gradient(90deg, #374151 0%, #1f2937 50%, #111827 100%)',
-                    borderRight: '1px solid rgba(56, 189, 248, 0.3)',
-                    borderRadius: '2px 0 0 2px',
-                    boxShadow: 'inset 0 0 3px rgba(0,0,0,0.5), 0 0 8px rgba(56, 189, 248, 0.1)'
-                  }}>
+                  <div className="rack-rail left">
                     {/* 导轨安装孔 - 左侧 */}
-                    {Array.from({ length: Math.max(1, Math.floor((selectedRack.height * 25 - 6) / 25)) }).map((_, index) => (
-                      <div
-                        key={`left-rail-${index}`}
-                        style={{
-                          position: 'absolute',
-                          left: '2px',
-                          width: '11px',
-                          height: '20px',
-                          top: `${(selectedRack.height - index - 1) * 25 + 2}px`,
-                          background: 'linear-gradient(180deg, #2d3436 0%, #636e72 50%, #2d3436 100%)',
-                          borderRadius: '1px',
-                          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(0,0,0,0.3)'
-                        }}
-                      >
-                        <div style={{
-                          position: 'absolute',
-                          left: '3px',
-                          top: '6px',
-                          width: '5px',
-                          height: '8px',
-                          background: '#1a1a1a',
-                          borderRadius: '1px'
-                        }} />
-                      </div>
-                    ))}
+                    {Array.from({ length: selectedRack.height }).map((_, index) => {
+                      // 计算安装孔的top位置，确保与U位标记对齐
+                      // U1在底部，所以index对应的top位置是：(selectedRack.height - 1 - index) * 25 + 2
+                      const topPosition = (selectedRack.height - 1 - index) * 25 + 2;
+                      return (
+                        <div
+                          key={`left-rail-${index}`}
+                          className="rail-hole left"
+                          style={{ top: `${topPosition}px` }}
+                        >
+                          <div className="rail-hole-inner left" />
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   {/* 右侧U型安装导轨 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '3px',
-                    right: '33px',
-                    width: '15px',
-                    bottom: '3px',
-                    background: 'linear-gradient(90deg, #343a40 0%, #495057 50%, #5a6268 100%)',
-                    borderLeft: '1px solid rgba(0,0,0,0.3)',
-                    borderRadius: '0 2px 2px 0',
-                    boxShadow: 'inset 0 0 3px rgba(0,0,0,0.4)'
-                  }}>
+                  <div className="rack-rail right">
                     {/* 导轨安装孔 - 右侧 */}
-                    {Array.from({ length: Math.max(1, Math.floor((selectedRack.height * 25 - 6) / 25)) }).map((_, index) => (
-                      <div
-                        key={`right-rail-${index}`}
-                        style={{
-                          position: 'absolute',
-                          right: '2px',
-                          width: '11px',
-                          height: '20px',
-                          top: `${(selectedRack.height - index - 1) * 25 + 2}px`,
-                          background: 'linear-gradient(180deg, #2d3436 0%, #636e72 50%, #2d3436 100%)',
-                          borderRadius: '1px',
-                          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(0,0,0,0.3)'
-                        }}
-                      >
-                        <div style={{
-                          position: 'absolute',
-                          right: '3px',
-                          top: '6px',
-                          width: '5px',
-                          height: '8px',
-                          background: '#1a1a1a',
-                          borderRadius: '1px'
-                        }} />
-                      </div>
-                    ))}
+                    {Array.from({ length: selectedRack.height }).map((_, index) => {
+                      // 计算安装孔的top位置，确保与U位标记对齐
+                      // U1在底部，所以index对应的top位置是：(selectedRack.height - 1 - index) * 25 + 2
+                      const topPosition = (selectedRack.height - 1 - index) * 25 + 2;
+                      return (
+                        <div
+                          key={`right-rail-${index}`}
+                          className="rail-hole right"
+                          style={{ top: `${topPosition}px` }}
+                        >
+                          <div className="rail-hole-inner right" />
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   {/* 前面板 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '3px',
-                    left: '51px',
-                    right: '51px',
-                    bottom: '3px',
-                    background: 'linear-gradient(145deg, #f5f5f5, #e8e8e8)',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-start',
-                    alignItems: 'stretch',
-                    padding: '3px',
-                    border: '1px solid rgba(148, 163, 184, 0.3)',
-                    overflow: 'visible',
-                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
+                  <div className="rack-front-panel">
                     {/* 细微网格纹理 */}
-                    <div style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0)',
-                      backgroundSize: '20px 20px',
-                      borderRadius: '4px',
-                      pointerEvents: 'none'
-                    }} />
+                    <div className="front-panel-grid" />
                     
                     {/* U位网格线 */}
-                    <div style={{
-                      position: 'absolute',
-                      top: '3px',
-                      left: '48px',
-                      right: '48px',
-                      bottom: '3px',
-                      pointerEvents: 'none',
-                      zIndex: 5
-                    }}>
+                    <div className="u-grid-lines">
                       {Array.from({ length: Math.max(0, selectedRack.height - 1) }).map((_, index) => (
                         <div
                           key={`grid-line-${index}`}
-                          style={{
-                            position: 'absolute',
-                            top: `${(index + 1) * 25 - 1}px`,
-                            left: 0,
-                            right: 0,
-                            height: '1px',
-                            background: 'linear-gradient(90deg, transparent 0%, rgba(148, 163, 184, 0.15) 10%, rgba(148, 163, 184, 0.2) 50%, rgba(148, 163, 184, 0.15) 90%, transparent 100%)'
-                          }}
+                          className="u-grid-line"
+                          style={{ top: `${(index + 1) * 25 - 1}px` }}
                         />
                       ))}
                     </div>
@@ -1881,47 +1500,16 @@ function RackVisualization() {
                         return (
                           <div 
                             key={deviceId} 
-                            className={`device ${isHighlighted ? 'device-highlighted' : ''}`}
+                            className={`device ${isHighlighted ? 'highlighted' : ''} ${device?.status === 'warning' ? 'status-warning' : ''} ${(device?.status === 'error' || device?.status === 'fault') ? 'status-error' : ''}`}
                             style={{
                               ...getDeviceStyle(device, selectedRack.height),
-                              position: 'absolute',
-                              left: '3px',
-                              right: '3px',
-                              width: 'calc(100% - 6px)',
-                              borderRadius: '3px',
-                              display: 'flex',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              boxShadow: isHighlighted 
-                                ? `
-                                    0 0 20px ${statusTheme.glowColor},
-                                    0 4px 12px ${statusTheme.shadowColor},
-                                    0 1px 2px rgba(0,0,0,0.3),
-                                    inset 0 1px 0 rgba(255,255,255,0.2)
-                                  `
-                                : `
-                                    0 1px 2px rgba(0,0,0,0.3),
-                                    0 2px 4px rgba(0,0,0,0.2),
-                                    inset 0 1px 0 rgba(255,255,255,0.1),
-                                    inset 0 -1px 0 rgba(0,0,0,0.1)
-                                  `,
-                              background: isHighlighted
-                                ? statusTheme.bgGradient
-                                : statusTheme.bgGradient,
+                              background: statusTheme.bgGradient,
                               border: isHighlighted 
                                 ? `2px solid ${statusTheme.topBorderColor}` 
                                 : `1px solid ${statusTheme.borderColor}`,
                               borderTop: isHighlighted
                                 ? `2px solid ${statusTheme.topBorderColor}`
-                                : `1px solid ${statusTheme.topBorderColor}`,
-                              overflow: 'hidden',
-                              margin: 0,
-                              padding: 0,
-                              zIndex: isHighlighted ? 200 : 100,
-                              pointerEvents: 'auto',
-                              animation: isHighlighted ? 'highlightPulse 1.5s ease-in-out infinite' : 
-                                       device?.status === 'warning' ? 'ledBlink 2s ease-in-out infinite' :
-                                       device?.status === 'error' || device?.status === 'fault' ? 'ledBlink 0.8s ease-in-out infinite' : 'none'
+                                : `1px solid ${statusTheme.topBorderColor}`
                             }}
                             onMouseEnter={(e) => {
                               const isOneU = (device?.height || 1) === 1;
@@ -1961,209 +1549,80 @@ function RackVisualization() {
                               setDeviceTooltip(null);
                             }}
                           >
-                            <div style={{
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: '2px',
-                              background: `linear-gradient(90deg, ${statusTheme.topBorderColor} 0%, ${statusTheme.borderColor} 50%, ${statusTheme.topBorderColor} 100%)`,
-                              opacity: 0.8
+                            <div className="device-status-top-bar" style={{
+                              background: `linear-gradient(90deg, ${statusTheme.topBorderColor} 0%, ${statusTheme.borderColor} 50%, ${statusTheme.topBorderColor} 100%)`
                             }} />
                             
                               {/* 左侧状态指示区域 - 增强版 */}
-                              <div style={{
-                                width: '7%',
+                              <div className="device-status-indicator" style={{
                                 background: isHighlighted 
                                   ? `linear-gradient(180deg, ${statusTheme.borderColor}33 0%, ${statusTheme.borderColor}22 100%)`
                                   : `linear-gradient(180deg, ${statusTheme.borderColor}44 0%, ${statusTheme.borderColor}22 100%)`,
-                                borderRadius: '3px 0 0 3px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '4px 3px',
-                                flexShrink: 0,
-                                overflow: 'hidden',
-                                position: 'relative',
                                 borderRight: `1px solid ${statusTheme.borderColor}66`
                               }}>
                                 {/* 设备类型标识 */}
-                                <div style={{
-                                  width: '100%',
-                                  height: '8px',
+                                <div className="device-type-badge" style={{
                                   background: `linear-gradient(180deg, ${statusTheme.borderColor}66 0%, ${statusTheme.borderColor}33 100%)`,
-                                  borderRadius: '2px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
                                   border: `1px solid ${statusTheme.borderColor}44`
                                 }}>
-                                  <span style={{
-                                    fontSize: '4px',
-                                    color: statusTheme.topBorderColor,
-                                    fontWeight: '700',
-                                    letterSpacing: '0.5px'
-                                  }}>
+                                  <span className="device-type-text" style={{ color: statusTheme.topBorderColor }}>
                                     {device.type?.toUpperCase() || 'DEV'}
                                   </span>
                                 </div>
                                 
                                 {/* LED状态指示灯组 */}
-                                <div style={{
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '3px',
-                                  alignItems: 'center'
-                                }}>
+                                <div className="device-leds">
                                   {/* 主状态灯 */}
-                                  <div style={{
-                                    display: 'flex',
-                                    gap: '2px'
-                                  }}>
-                                    <div style={{
-                                      width: '5px',
-                                      height: '5px',
-                                      borderRadius: '50%',
+                                  <div className="main-status-leds">
+                                    <div className={`led ${device.status === 'warning' ? 'status-warning' : ''} ${device.status === 'error' ? 'status-error' : ''} ${device.status === 'normal' || device.status === 'running' ? 'status-normal' : 'offline'}`} style={{
                                       backgroundColor: getDeviceStatusColor(device.status),
-                                      animation: device.status === 'warning' ? 'ledBlink 2s ease-in-out infinite' : 
-                                                device.status === 'error' ? 'ledBlink 0.8s ease-in-out infinite' : 'none',
                                       boxShadow: `0 0 8px ${getDeviceStatusColor(device.status)}`
                                     }} />
-                                    <div style={{
-                                      width: '5px',
-                                      height: '5px',
-                                      borderRadius: '50%',
-                                      backgroundColor: device.status === 'running' ? '#22c55e' : '#4b5563',
-                                      boxShadow: device.status === 'running' ? '0 0 6px #22c55e' : 'none',
-                                      animation: device.status === 'running' ? 'ledBlink 3s ease-in-out infinite' : 'none'
-                                    }} />
-                                    <div style={{
-                                      width: '5px',
-                                      height: '5px',
-                                      borderRadius: '50%',
-                                      backgroundColor: '#22c55e',
-                                      boxShadow: '0 0 6px #22c55e',
-                                      animation: 'ledBlink 4s ease-in-out infinite'
-                                    }} />
+                                    <div className={`led ${device.status === 'running' ? 'status-running' : 'offline'}`} />
+                                    <div className="led status-running" />
                                   </div>
                                   
                                   {/* 电源指示灯 */}
-                                  <div style={{
-                                    display: 'flex',
-                                    gap: '2px',
-                                    alignItems: 'center'
-                                  }}>
-                                    <div style={{
-                                      width: '4px',
-                                      height: '4px',
-                                      borderRadius: '1px',
-                                      backgroundColor: device.status !== 'offline' ? '#38bdf8' : '#475569',
-                                      boxShadow: device.status !== 'offline' ? '0 0 4px #38bdf8' : 'none'
-                                    }} />
-                                    <span style={{
-                                      fontSize: '4px',
-                                      color: device.status !== 'offline' ? '#38bdf8' : '#64748b',
-                                      fontWeight: '600'
-                                    }}>
+                                  <div className="power-led">
+                                    <div className={`power-led-indicator ${device.status !== 'offline' ? 'on' : ''}`} />
+                                    <span className={`power-led-text ${device.status !== 'offline' ? 'on' : ''}`}>
                                       PWR
                                     </span>
                                   </div>
                                 </div>
                                 
                                 {/* 设备序列号标签 */}
-                                <div style={{
-                                  width: '100%',
-                                  textAlign: 'center',
-                                  borderTop: '1px solid rgba(148, 163, 184, 0.2)',
-                                  paddingTop: '2px'
-                                }}>
-                                  <span style={{
-                                    fontSize: '4px',
-                                    color: '#475569',
-                                    fontFamily: 'monospace'
-                                  }}>
+                                <div className="device-serial">
+                                  <span className="device-serial-text">
                                     SN:{device.serial?.slice(-4) || '0000'}
                                   </span>
                                 </div>
                               </div>
                               
                               {/* 中间设备信息区域 - 增强版 */}
-                              <div style={{
-                                flex: 1,
-                                background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center',
-                                padding: '3px 8px',
-                                overflow: 'hidden',
-                                borderLeft: '1px solid rgba(148, 163, 184, 0.15)',
-                                borderRight: '1px solid rgba(148, 163, 184, 0.15)',
-                                position: 'relative'
-                              }}>
+                              <div className="device-info">
                                 {/* 设备品牌/厂商标识 */}
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  marginBottom: '2px'
-                                }}>
-                                  <div style={{
-                                    fontSize: '10px',
-                                    color: '#38bdf8',
-                                    display: 'flex',
-                                    alignItems: 'center'
-                                  }}>
+                                <div className="device-brand">
+                                  <div className="device-brand-icon">
                                     {getDeviceIcon(device.type)}
                                   </div>
-                                  <span style={{
-                                    fontSize: '5px',
-                                    color: '#64748b',
-                                    fontWeight: '600',
-                                    letterSpacing: '0.5px'
-                                  }}>
+                                  <span className="device-brand-text">
                                     {device.brand || 'ENTERPRISE'}
                                   </span>
                                 </div>
                                 
                                 {/* 设备名称 */}
-                                <div style={{
-                                  color: '#f1f5f9',
-                                  fontSize: '8px',
-                                  fontWeight: '600',
-                                  fontFamily: '"Roboto Mono", "Consolas", monospace',
-                                  textAlign: 'left',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  textShadow: '0 0 10px rgba(56, 189, 248, 0.3)'
-                                }}>
+                                <div className="device-name">
                                   {deviceName}
                                 </div>
                                 
                                 {/* 型号和规格 */}
-                                <div style={{
-                                  display: 'flex',
-                                  gap: '8px',
-                                  alignItems: 'center',
-                                  marginTop: '2px'
-                                }}>
-                                  <span style={{
-                                    color: '#64748b',
-                                    fontSize: '6px',
-                                    fontFamily: '"Roboto Mono", monospace',
-                                    background: 'rgba(56, 189, 248, 0.1)',
-                                    padding: '1px 4px',
-                                    borderRadius: '2px',
-                                    border: '1px solid rgba(56, 189, 248, 0.2)'
-                                  }}>
+                                <div className="device-model">
+                                  <span className="device-model-text">
                                     {device.model || device.type?.toUpperCase() || 'STD'}
                                   </span>
                                   {device.ip && (
-                                    <span style={{
-                                      color: '#22c55e',
-                                      fontSize: '6px',
-                                      fontFamily: '"Roboto Mono", monospace'
-                                    }}>
+                                    <span className="device-ip">
                                       {device.ip}
                                     </span>
                                   )}
@@ -2171,95 +1630,33 @@ function RackVisualization() {
                                 
                                 {/* 散热/通风口装饰 - 根据设备类型显示 */}
                                 {(device.type === 'server' || device.type === 'storage') && (
-                                  <div style={{
-                                    position: 'absolute',
-                                    right: '8px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    display: 'flex',
-                                    gap: '2px'
-                                  }}>
+                                  <div className="device-ventilation">
                                     {Array.from({ length: 3 }).map((_, i) => (
-                                      <div key={i} style={{
-                                        width: '3px',
-                                        height: '12px',
-                                        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-                                        borderRadius: '1px',
-                                        border: '1px solid rgba(148, 163, 184, 0.2)'
-                                      }} />
+                                      <div key={i} className="ventilation-fin" />
                                     ))}
                                   </div>
                                 )}
                               </div>
                               
                               {/* 右侧端口/功能区域 - 增强版 */}
-                              <div style={{
-                                width: '12%',
-                                background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-                                borderRadius: '0 3px 3px 0',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                                padding: '4px 3px',
-                                gap: '4px',
-                                overflow: 'hidden',
-                                position: 'relative',
-                                borderLeft: '1px solid rgba(148, 163, 184, 0.2)'
-                              }}>
+                              <div className="device-ports">
                                 {/* 端口指示灯阵列 */}
-                                <div style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(2, 1fr)',
-                                  gap: '2px'
-                                }}>
+                                <div className="port-leds">
                                   {Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} style={{
-                                      width: '4px',
-                                      height: '4px',
-                                      borderRadius: '1px',
-                                      backgroundColor: i < 3 ? '#22c55e' : '#475569',
-                                      boxShadow: i < 3 ? '0 0 3px rgba(34, 197, 94, 0.6)' : 'none',
-                                      animation: i < 2 ? 'ledBlink 2s ease-in-out infinite' : 'none'
-                                    }} />
+                                    <div key={i} className={`port-led ${i < 3 ? 'active' : 'inactive'}`} />
                                   ))}
                                 </div>
                                 
                                 {/* 管理接口标识 */}
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '2px',
-                                  marginTop: '2px'
-                                }}>
-                                  <div style={{
-                                    width: '0',
-                                    height: '0',
-                                    borderLeft: '4px solid transparent',
-                                    borderRight: '4px solid transparent',
-                                    borderBottom: '6px solid #64748b'
-                                  }} />
-                                  <span style={{
-                                    fontSize: '5px',
-                                    color: '#64748b',
-                                    fontWeight: '600'
-                                  }}>
+                                <div className="management-interface">
+                                  <div className="management-icon" />
+                                  <span className="management-text">
                                     MGMT
                                   </span>
                                 </div>
                                 
                                 {/* 设备高度U数标识 */}
-                                <div style={{
-                                  fontSize: '5px',
-                                  color: '#38bdf8',
-                                  fontWeight: '700',
-                                  fontFamily: '"Roboto Mono", monospace',
-                                  background: 'rgba(56, 189, 248, 0.15)',
-                                  padding: '1px 4px',
-                                  borderRadius: '2px',
-                                  border: '1px solid rgba(56, 189, 248, 0.3)'
-                                }}>
+                                <div className="device-height">
                                   {device.height}U
                                 </div>
                               </div>
@@ -2271,103 +1668,29 @@ function RackVisualization() {
                         return (
                           <div 
                             key={`error-${Math.random()}`} 
-                            style={{
-                              position: 'absolute',
-                              left: '35px',
-                              right: '35px',
-                              top: '50%',
-                              height: '30px',
-                              transform: 'translateY(-50%)',
-                              backgroundColor: '#ff4d4f',
-                              color: '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '12px',
-                              borderRadius: '4px'
-                            }}
+                            className="device-error"
                           >
                             设备加载错误
                           </div>
                         );
                       }
                     }) : (
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        color: '#81c784',
-                        fontSize: '16px',
-                        textAlign: 'center',
-                        padding: '16px 24px',
-                        backgroundColor: 'rgba(240, 255, 240, 0.95)',
-                        borderRadius: '12px',
-                        border: '1px solid rgba(129, 199, 132, 0.3)',
-                        boxShadow: '0 4px 12px rgba(129, 199, 132, 0.2)',
-                        fontWeight: '500'
-                      }}>
+                      <div className="no-data-container">
                         暂无设备数据
                       </div>
                     )}
                   </div>
                   
                   {/* 侧面 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: '100%',
-                    width: '30px',
-                    height: '100%',
-                    backgroundColor: '#7f8c8d',
-                    transformOrigin: 'left center',
-                    transform: 'rotateY(90deg)',
-                    borderTopRightRadius: '4px',
-                    borderBottomRightRadius: '4px'
-                  }} />
+                  <div className="rack-side" />
                   
                   {/* 机柜顶部 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '-20px',
-                    left: '0',
-                    width: '100%',
-                    height: '20px',
-                    backgroundColor: '#666',
-                    transformOrigin: 'bottom center',
-                    transform: 'rotateX(90deg)',
-                    borderTopLeftRadius: '4px',
-                    borderTopRightRadius: '4px'
-                  }} />
+                  <div className="rack-top" />
                   
                   {/* 机柜名称和设备数量 */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '-45px',
-                    left: '0',
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}>
+                  <div className="rack-header">
                     {/* 机柜标题 */}
-                    <div style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: '#0f172a',
-                      textShadow: '0 1px 2px rgba(255,255,255,0.5)',
-                      padding: '6px 14px',
-                      background: 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241, 245, 249, 0.95))',
-                      borderRadius: '10px',
-                      border: '1px solid rgba(56, 189, 248, 0.4)',
-                      boxShadow: '0 3px 10px rgba(56, 189, 248, 0.2)',
-                      transition: 'all 0.3s ease',
-                      whiteSpace: 'nowrap',
-                      maxWidth: '60%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
+                    <div className="rack-title">
                       {selectedRack.name} ({selectedRack.rackId})
                     </div>
                     
@@ -2381,16 +1704,7 @@ function RackVisualization() {
               </div>
             </div>
           ) : (
-            <div style={{ 
-              width: '100%', 
-              height: '600px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: '#f5f5f5',
-              fontSize: '16px',
-              color: '#666'
-            }}>
+            <div className="select-rack-prompt">
               请选择机柜
             </div>
           )}

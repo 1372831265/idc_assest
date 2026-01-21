@@ -1,0 +1,1062 @@
+/* 设计令牌 */
+:root {
+  /* 颜色 */
+  --color-primary-main: #667eea;
+  --color-primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --color-primary-light: #8b9ff0;
+  --color-primary-dark: #4f5db8;
+  --color-success-main: #10b981;
+  --color-success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --color-warning-main: #f59e0b;
+  --color-warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  --color-error-main: #ef4444;
+  --color-error-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #ffffff;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-background-tertiary: #f1f5f9;
+  --color-border-light: #e2e8f0;
+  --color-border-medium: #cbd5e1;
+  --color-border-dark: #94a3b8;
+  --color-device-server: #3b82f6;
+  --color-device-switch: #22c55e;
+  --color-device-router: #f59e0b;
+  --color-device-storage: #8b5cf6;
+  --color-device-firewall: #ef4444;
+  --color-status-normal: #10b981;
+  --color-status-running: #10b981;
+  --color-status-warning: #f59e0b;
+  --color-status-error: #ef4444;
+  --color-status-offline: #6b7280;
+  --color-status-maintenance: #3b82f6;
+
+  /* 阴影 */
+  --shadow-small: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-medium: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-large: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* 边框半径 */
+  --border-radius-small: 6px;
+  --border-radius-medium: 10px;
+  --border-radius-large: 16px;
+  --border-radius-xl: 24px;
+  --border-radius-round: 50%;
+
+  /* 过渡 */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* U高度 */
+  --u-height: 25px;
+}
+
+/* 页面容器样式 */
+.page-container {
+  min-height: 100vh;
+  background: var(--color-background-secondary);
+  padding: var(--spacing-lg);
+}
+
+/* 头部样式 */
+.header {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: var(--color-primary-gradient);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-large);
+  color: var(--color-text-inverse);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+/* 统计卡片样式 */
+.stat-card {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--border-radius-medium);
+  padding: var(--spacing-md);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+/* 卡片样式 */
+.card {
+  border-radius: var(--border-radius-large);
+  border: none;
+  box-shadow: var(--shadow-medium);
+  background: var(--color-background-primary);
+  overflow: hidden;
+}
+
+.filter-card {
+  border-radius: var(--border-radius-medium);
+  border: none;
+  box-shadow: var(--shadow-small);
+  background: var(--color-background-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.filter-card-body {
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+/* 按钮样式 */
+.primary-button {
+  height: 40px;
+  border-radius: var(--border-radius-medium);
+  background: var(--color-primary-gradient);
+  border: none;
+  box-shadow: var(--shadow-medium);
+  font-weight: 500;
+  transition: all var(--transition-normal);
+}
+
+.secondary-button {
+  height: 40px;
+  border-radius: var(--border-radius-medium);
+  border: 1px solid var(--color-border-light);
+  background: var(--color-background-primary);
+  transition: all var(--transition-fast);
+}
+
+/* 动画 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
+@keyframes ledBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(56, 189, 248, 0.6),
+      0 4px 12px rgba(56, 189, 248, 0.4),
+      0 1px 2px rgba(0,0,0,0.3),
+      inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 35px rgba(56, 189, 248, 0.9),
+      0 6px 20px rgba(56, 189, 248, 0.6),
+      0 1px 2px rgba(0,0,0,0.3),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+}
+
+/* 设备高亮 */
+.device-highlighted {
+  animation: highlightPulse 1.5s ease-in-out infinite;
+}
+
+/* 金属纹理 */
+.metal-texture {
+  background-image: 
+    linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255,255,255,0.03) 50%, 
+      transparent 100%),
+    repeating-linear-gradient(0deg,
+      transparent 0px,
+      rgba(255,255,255,0.02) 1px,
+      transparent 2px,
+      transparent 3px);
+  background-size: 100% 100%, 4px 4px;
+}
+
+/* 通风格栅 */
+.ventilation-grille {
+  background-image: repeating-linear-gradient(
+    0deg,
+    #334155 0px,
+    #334155 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+
+/* 设备悬停效果 */
+.device-hover {
+  background: linear-gradient(145deg, #1e293b, #0f172a) !important;
+  box-shadow: 0 6px 16px rgba(56, 189, 248, 0.3), 0 0 12px rgba(56, 189, 248, 0.2) !important;
+  border-color: #38bdf8 !important;
+}
+
+/* 设备提示框 */
+.device-tooltip {
+  background: rgba(0, 0, 0, 0.9);
+  color: #5eead4;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  white-space: nowrap;
+}
+
+/* 设备数量徽章 */
+.device-count-badge {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.2));
+  color: #38bdf8;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+}
+
+/* 机柜可视化容器 */
+.rack-visualization-container {
+  width: 100%;
+  height: calc(100vh - 220px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  perspective: 1000px;
+  overflow: auto;
+  background-color: #fafafa;
+  background-size: auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.3s ease;
+  padding: 10px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.rack-visualization-container.image-background {
+  background-size: contain;
+}
+
+/* 机柜容器 */
+.rack-container {
+  transform: scale(1.7);
+  transition: transform 0.3s ease;
+  position: relative;
+  margin: 0 auto;
+  padding: 40px 50px;
+  will-change: transform, scale;
+}
+
+/* 机柜主体 */
+.rack {
+  position: relative;
+  width: 600px;
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 50%, #1e293b 100%);
+  border: 2px solid #38bdf8;
+  border-radius: 12px;
+  box-shadow: 
+    0 0 40px rgba(56, 189, 248, 0.2),
+    0 0 80px rgba(56, 189, 248, 0.1),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 60px rgba(56, 189, 248, 0.05);
+  overflow: visible;
+  backdrop-filter: blur(10px);
+}
+
+/* 玻璃光泽效果 */
+.rack-glass-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.03) 0%, transparent 100%);
+  border-radius: 10px 10px 0 0;
+  pointer-events: none;
+}
+
+/* U数标记容器 */
+.u-marks-container {
+  position: absolute;
+  width: 18px;
+  top: 0;
+  bottom: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.u-marks-container.left {
+  left: -18px;
+}
+
+.u-marks-container.right {
+  right: -18px;
+}
+
+/* U数标记 */
+.u-mark {
+  position: absolute;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 500;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  background-color: rgba(30, 41, 59, 0.8);
+  border-radius: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.3);
+  height: var(--u-height);
+}
+
+.u-mark:nth-child(5n) {
+  color: #38bdf8;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+  background-color: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+/* U数标记线 */
+.u-mark-line {
+  position: absolute;
+  height: 1px;
+  width: 100%;
+  background-color: #a5d6a7;
+  border-top: 1px solid #a5d6a7;
+}
+
+.u-mark-line.five {
+  background-color: #81c784;
+  border-top: 2px solid #81c784;
+}
+
+.u-mark-text {
+  position: absolute;
+  left: -40px;
+  top: -12px;
+  font-size: 12px;
+  color: #4caf50;
+  font-weight: normal;
+  text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
+}
+
+.u-mark-text.five {
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+/* 安装导轨 */
+.rack-rail {
+  position: absolute;
+  top: 3px;
+  width: 15px;
+  bottom: 3px;
+  background: linear-gradient(90deg, #374151 0%, #1f2937 50%, #111827 100%);
+  border-radius: 2px;
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.5), 0 0 8px rgba(56, 189, 248, 0.1);
+}
+
+.rack-rail.left {
+  left: 33px;
+  border-right: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 2px 0 0 2px;
+}
+
+.rack-rail.right {
+  right: 33px;
+  background: linear-gradient(90deg, #343a40 0%, #495057 50%, #5a6268 100%);
+  border-left: 1px solid rgba(0,0,0,0.3);
+  border-radius: 0 2px 2px 0;
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.4);
+}
+
+/* 导轨安装孔 */
+.rail-hole {
+  position: absolute;
+  width: 11px;
+  height: 20px;
+  background: linear-gradient(180deg, #2d3436 0%, #636e72 50%, #2d3436 100%);
+  border-radius: 1px;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(0,0,0,0.3);
+}
+
+.rail-hole.left {
+  left: 2px;
+}
+
+.rail-hole.right {
+  right: 2px;
+}
+
+.rail-hole-inner {
+  position: absolute;
+  width: 5px;
+  height: 8px;
+  background: #1a1a1a;
+  border-radius: 1px;
+  top: 6px;
+}
+
+.rail-hole-inner.left {
+  left: 3px;
+}
+
+.rail-hole-inner.right {
+  right: 3px;
+}
+
+/* 前面板 */
+.rack-front-panel {
+  position: absolute;
+  top: 0;
+  left: 51px;
+  right: 51px;
+  bottom: 0;
+  background: linear-gradient(145deg, #f5f5f5, #e8e8e8);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  overflow: visible;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* 细微网格纹理 */
+.front-panel-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
+  background-size: 20px 20px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* U位网格线 */
+.u-grid-lines {
+  position: absolute;
+  top: 3px;
+  left: 48px;
+  right: 48px;
+  bottom: 3px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.u-grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(148, 163, 184, 0.15) 10%, rgba(148, 163, 184, 0.2) 50%, rgba(148, 163, 184, 0.15) 90%, transparent 100%);
+}
+
+/* 设备容器 */
+.devices-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* 设备 */
+.device {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  width: calc(100% - 6px);
+  border-radius: 3px;
+  display: flex;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 
+    0 1px 2px rgba(0,0,0,0.3),
+    0 2px 4px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 -1px 0 rgba(0,0,0,0.1);
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.device.highlighted {
+  box-shadow: 
+    0 0 20px rgba(56, 189, 248, 0.6),
+    0 4px 12px rgba(56, 189, 248, 0.4),
+    0 1px 2px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.2);
+  z-index: 200;
+  animation: highlightPulse 1.5s ease-in-out infinite;
+}
+
+.device.status-warning {
+  animation: ledBlink 2s ease-in-out infinite;
+}
+
+.device.status-error {
+  animation: ledBlink 0.8s ease-in-out infinite;
+}
+
+/* 设备状态指示器 */
+.device-status-indicator {
+  width: 7%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 3px;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+  border-right: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 3px 0 0 3px;
+}
+
+/* 设备类型标识 */
+.device-type-badge {
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.6) 0%, rgba(56, 189, 248, 0.3) 100%);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.device-type-text {
+  font-size: 4px;
+  color: rgba(56, 189, 248, 0.8);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* LED状态指示灯组 */
+.device-leds {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+}
+
+.main-status-leds {
+  display: flex;
+  gap: 2px;
+}
+
+.led {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.led.status-normal {
+  background-color: var(--color-status-normal);
+  box-shadow: 0 0 8px var(--color-status-normal);
+}
+
+.led.status-running {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  animation: ledBlink 3s ease-in-out infinite;
+}
+
+.led.status-error {
+  background-color: var(--color-status-error);
+  box-shadow: 0 0 8px var(--color-status-error);
+  animation: ledBlink 0.8s ease-in-out infinite;
+}
+
+.led.status-warning {
+  background-color: var(--color-status-warning);
+  box-shadow: 0 0 8px var(--color-status-warning);
+  animation: ledBlink 2s ease-in-out infinite;
+}
+
+.led.offline {
+  background-color: #4b5563;
+}
+
+/* 电源指示灯 */
+.power-led {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.power-led-indicator {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background-color: #475569;
+}
+
+.power-led-indicator.on {
+  background-color: #38bdf8;
+  box-shadow: 0 0 4px #38bdf8;
+}
+
+.power-led-text {
+  font-size: 4px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.power-led-text.on {
+  color: #38bdf8;
+}
+
+/* 设备序列号标签 */
+.device-serial {
+  width: 100%;
+  text-align: center;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  padding-top: 2px;
+}
+
+.device-serial-text {
+  font-size: 4px;
+  color: #475569;
+  font-family: monospace;
+}
+
+/* 设备信息区域 */
+.device-info {
+  flex: 1;
+  background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3px 8px;
+  overflow: hidden;
+  border-left: 1px solid rgba(148, 163, 184, 0.15);
+  border-right: 1px solid rgba(148, 163, 184, 0.15);
+  position: relative;
+}
+
+/* 设备品牌/厂商标识 */
+.device-brand {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.device-brand-icon {
+  font-size: 10px;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+}
+
+.device-brand-text {
+  font-size: 5px;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* 设备名称 */
+.device-name {
+  color: #f1f5f9;
+  font-size: 8px;
+  font-weight: 600;
+  font-family: "Roboto Mono", "Consolas", monospace;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+/* 设备型号和规格 */
+.device-model {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.device-model-text {
+  color: #64748b;
+  font-size: 6px;
+  font-family: "Roboto Mono", monospace;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 1px 4px;
+  border-radius: 2px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.device-ip {
+  color: #22c55e;
+  font-size: 6px;
+  font-family: "Roboto Mono", monospace;
+}
+
+/* 散热/通风口装饰 */
+.device-ventilation {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+}
+
+.ventilation-fin {
+  width: 3px;
+  height: 12px;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 1px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* 设备右侧端口/功能区域 */
+.device-ports {
+  width: 12%;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 0 3px 3px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 4px 3px;
+  gap: 4px;
+  overflow: hidden;
+  position: relative;
+  border-left: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* 端口指示灯阵列 */
+.port-leds {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+}
+
+.port-led {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+}
+
+.port-led.active {
+  background-color: #22c55e;
+  box-shadow: 0 0 3px rgba(34, 197, 94, 0.6);
+  animation: ledBlink 2s ease-in-out infinite;
+}
+
+.port-led.inactive {
+  background-color: #475569;
+}
+
+/* 管理接口标识 */
+.management-interface {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.management-icon {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid #64748b;
+}
+
+.management-text {
+  font-size: 5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* 设备高度U数标识 */
+.device-height {
+  font-size: 5px;
+  color: #38bdf8;
+  font-weight: 700;
+  font-family: "Roboto Mono", monospace;
+  background: rgba(56, 189, 248, 0.15);
+  padding: 1px 4px;
+  border-radius: 2px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* 机柜顶部名称和设备数量 */
+.rack-header {
+  position: absolute;
+  top: -45px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 机柜标题 */
+.rack-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+  padding: 6px 14px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241, 245, 249, 0.95));
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 3px 10px rgba(56, 189, 248, 0.2);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 机柜侧面 */
+.rack-side {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: 30px;
+  height: 100%;
+  background-color: #7f8c8d;
+  transform-origin: left center;
+  transform: rotateY(90deg);
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* 机柜顶部 */
+.rack-top {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background-color: #666;
+  transform-origin: bottom center;
+  transform: rotateX(90deg);
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+/* 加载状态 */
+.loading-container {
+  width: 100%;
+  height: 600px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fafafa;
+  font-size: 16px;
+  color: #666;
+  border-radius: 12px;
+}
+
+/* 无数据状态 */
+.no-data-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #81c784;
+  font-size: 16px;
+  text-align: center;
+  padding: 16px 24px;
+  background-color: rgba(240, 255, 240, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(129, 199, 132, 0.3);
+  box-shadow: 0 4px 12px rgba(129, 199, 132, 0.2);
+  font-weight: 500;
+}
+
+/* 错误边界样式 */
+.error-boundary {
+  width: 100%;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f5f5;
+  padding: 20px;
+}
+
+.error-boundary-title {
+  color: #f44336;
+}
+
+.error-boundary-message {
+  color: #666;
+  margin: 10px 0;
+}
+
+.error-boundary-reload-button {
+  padding: 8px 16px;
+  background-color: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* 搜索结果卡片 */
+.search-result-card {
+  background: var(--color-success-gradient);
+  border-radius: var(--border-radius-medium);
+}
+
+.search-result-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+/* 搜索结果按钮 */
+.search-result-button {
+  size: small;
+  height: 32px;
+  border-radius: var(--border-radius-small);
+  border-color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.search-result-button.highlighted {
+  background: rgba(255,255,255,0.2);
+}
+
+/* 设备加载状态 */
+.device-loading-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+
+.device-loading-content {
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 设备加载错误 */
+.device-error {
+  position: absolute;
+  left: 35px;
+  right: 35px;
+  top: 50%;
+  height: 30px;
+  transform: translateY(-50%);
+  background-color: #ff4d4f;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+/* 选择机柜提示 */
+.select-rack-prompt {
+  width: 100%;
+  height: 600px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f5f5;
+  font-size: 16px;
+  color: #666;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .device-tooltip {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+
+  .device-count-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .device-tooltip {
+    font-size: 9px;
+    padding: 4px 8px;
+  }
+
+  .device-count-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+  
+  .rack-container {
+    transform: scale(0.8);
+  }
+}

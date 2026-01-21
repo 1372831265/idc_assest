@@ -338,4 +338,57 @@ router.post('/check-admin', async (req, res) => {
   }
 });
 
+router.post('/unlock', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: '用户名和密码不能为空'
+      });
+    }
+
+    const user = await User.findOne({ where: { username } });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: '用户名或密码错误'
+      });
+    }
+
+    if (user.status !== 'locked') {
+      return res.status(400).json({
+        success: false,
+        message: '账户未被锁定'
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: '用户名或密码错误'
+      });
+    }
+
+    // 解锁账户
+    user.status = 'active';
+    user.loginCount = 0;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: '账户解锁成功'
+    });
+  } catch (error) {
+    console.error('解锁账户错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '解锁失败',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

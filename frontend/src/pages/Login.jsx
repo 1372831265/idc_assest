@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authAPI } from '../api';
 
 const { Title, Text } = Typography;
 
@@ -17,6 +18,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [isFirstUser, setIsFirstUser] = useState(false);
   const [registerMode, setRegisterMode] = useState(false);
+  const [unlockMode, setUnlockMode] = useState(false);
   const { login, register, checkAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -50,6 +52,23 @@ const Login = () => {
       }
     } catch (error) {
       message.error(error || '登录失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onFinishUnlock = async (values) => {
+    setLoading(true);
+    try {
+      const response = await authAPI.unlock(values);
+      if (response.success) {
+        message.success('解锁成功，请重新登录');
+        setUnlockMode(false);
+      } else {
+        message.error(response.message || '解锁失败');
+      }
+    } catch (error) {
+      message.error(error || '解锁失败');
     } finally {
       setLoading(false);
     }
@@ -210,10 +229,11 @@ const Login = () => {
             <RobotOutlined style={{ fontSize: '40px', color: '#fff' }} />
           </div>
           <Title level={2} style={titleStyle}>
-            {isFirstUser ? '创建管理员账户' : 'IDC设备管理系统'}
+            {isFirstUser ? '创建管理员账户' : unlockMode ? '账户解锁' : 'IDC设备管理系统'}
           </Title>
           <Text style={subtitleStyle}>
-            {isFirstUser ? '首次使用，请创建系统管理员账户' : '安全登录您的账户'}
+            {isFirstUser ? '首次使用，请创建系统管理员账户' : 
+             unlockMode ? '输入账户信息以解锁账户' : '安全登录您的账户'}
           </Text>
         </div>
 
@@ -228,9 +248,9 @@ const Login = () => {
         )}
 
         <Form
-          name={registerMode ? 'register' : 'login'}
+          name={unlockMode ? 'unlock' : registerMode ? 'register' : 'login'}
           size="large"
-          onFinish={registerMode ? onFinishRegister : onFinishLogin}
+          onFinish={unlockMode ? onFinishUnlock : registerMode ? onFinishRegister : onFinishLogin}
           style={formStyle}
         >
           {registerMode ? (
@@ -321,6 +341,38 @@ const Login = () => {
                 />
               </Form.Item>
             </>
+          ) : unlockMode ? (
+            <>
+              <Alert
+                message="账户解锁说明"
+                description="当您的账户连续5次登录失败后会被锁定，请输入正确的用户名和密码进行解锁。"
+                type="info"
+                showIcon
+                style={{ marginBottom: '24px', borderRadius: '8px' }}
+              />
+              
+              <Form.Item
+                name="username"
+                rules={[{ required: true, message: '请输入用户名' }]}
+              >
+                <Input
+                  prefix={<UserOutlined style={inputPrefixStyle} />}
+                  placeholder="用户名"
+                  style={inputStyle}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="password"
+                rules={[{ required: true, message: '请输入密码' }]}
+              >
+                <Input.Password
+                  prefix={<LockOutlined style={inputPrefixStyle} />}
+                  placeholder="密码"
+                  style={inputStyle}
+                />
+              </Form.Item>
+            </>
           ) : (
             <>
               <Form.Item
@@ -354,7 +406,7 @@ const Login = () => {
               loading={loading}
               style={submitButtonStyle}
             >
-              {registerMode ? '立即注册' : '登 录'}
+              {registerMode ? '立即注册' : unlockMode ? '解 锁' : '登 录'}
             </Button>
           </Form.Item>
         </Form>
@@ -365,20 +417,55 @@ const Login = () => {
               <Text style={{ color: '#8c8c8c', fontSize: '12px' }}>其他方式</Text>
             </Divider>
             <Space split={<Divider type="vertical" />}>
-              <Button
-                type="link"
-                size="small"
-                style={toggleButtonStyle}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(102, 126, 234, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent';
-                }}
-                onClick={() => setRegisterMode(!registerMode)}
-              >
-                {registerMode ? '已有账户？去登录' : '注册新账户'}
-              </Button>
+              {unlockMode ? (
+                <>
+                  <Button
+                    type="link"
+                    size="small"
+                    style={toggleButtonStyle}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(102, 126, 234, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'transparent';
+                    }}
+                    onClick={() => setUnlockMode(false)}
+                  >
+                    返回登录
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="link"
+                    size="small"
+                    style={toggleButtonStyle}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(102, 126, 234, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'transparent';
+                    }}
+                    onClick={() => setRegisterMode(!registerMode)}
+                  >
+                    {registerMode ? '已有账户？去登录' : '注册新账户'}
+                  </Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    style={toggleButtonStyle}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(102, 126, 234, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'transparent';
+                    }}
+                    onClick={() => setUnlockMode(true)}
+                  >
+                    账户解锁
+                  </Button>
+                </>
+              )}
             </Space>
           </div>
         )}

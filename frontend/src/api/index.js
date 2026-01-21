@@ -63,6 +63,7 @@ export const authAPI = {
   checkAdmin: () => api.get('/auth/check-admin'),
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  unlock: (data) => api.post('/auth/unlock', data),
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data) => api.put('/auth/profile', data),
   changePassword: (data) => api.put('/auth/password', data)
