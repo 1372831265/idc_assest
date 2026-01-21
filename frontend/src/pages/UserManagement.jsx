@@ -151,6 +151,23 @@ const UserManagement = () => {
     }
   }, [fetchUsers]);
 
+  const handleLockUnlock = useCallback(async (record) => {
+    try {
+      const newStatus = record.status === 'locked' ? 'active' : 'locked';
+      const response = await userAPI.update(record.userId, {
+        status: newStatus
+      });
+      if (response.success) {
+        message.success(record.status === 'locked' ? '解锁成功' : '锁定成功');
+        fetchUsers();
+      } else {
+        message.error(response.message || '操作失败');
+      }
+    } catch (error) {
+      message.error('操作失败');
+    }
+  }, [fetchUsers]);
+
   const handleSubmit = useCallback(async (values) => {
     try {
       let response;
@@ -285,8 +302,7 @@ const UserManagement = () => {
         </div>
       )
     },
-    {
-      title: '操作',
+    {title: '操作',
       key: 'action',
       render: (_, record) => (
         <Space size="small">
@@ -305,6 +321,20 @@ const UserManagement = () => {
             />
           </Tooltip>
           <Popconfirm
+            title={record.status === 'locked' ? '确定要解锁此用户吗？' : '确定要锁定此用户吗？'}
+            onConfirm={() => handleLockUnlock(record)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Tooltip title={record.status === 'locked' ? '解锁' : '锁定'}>
+              <Button 
+                type="text" 
+                icon={record.status === 'locked' ? <ReloadOutlined /> : <LockOutlined />}
+                style={{ color: record.status === 'locked' ? '#52c41a' : '#faad14' }}
+              />
+            </Tooltip>
+          </Popconfirm>
+          <Popconfirm
             title="确定要删除此用户吗？"
             onConfirm={() => handleDelete(record.userId)}
             okText="确定"
@@ -317,7 +347,7 @@ const UserManagement = () => {
         </Space>
       )
     }
-  ], [handleAvatarClick, handleEdit, handleResetPassword, handleDelete]);
+  ], [handleAvatarClick, handleEdit, handleResetPassword, handleDelete, handleLockUnlock]);
 
   const pageHeaderStyle = {
     marginBottom: '24px',
