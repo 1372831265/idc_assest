@@ -2,6 +2,11 @@
 
 一个现代化的数据中心（IDC）设备管理系统，提供机房、机柜、设备的全生命周期管理，具备3D可视化展示功能。
 
+## 代码仓库
+
+- **GitHub**: https://github.com/gituib/idc_assest
+- **Gitee**: https://gitee.com/zhang1106/idc_assest
+
 ## 系统概述
 
 ### 核心功能

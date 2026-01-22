@@ -41,6 +41,14 @@
 ## ⚡ 快速开始
 
 ### 1. 克隆项目
+
+**方式一：从 GitHub 克隆（推荐）**
+```bash
+git clone https://github.com/gituib/idc_assest.git
+cd idc_assest
+```
+
+**方式二：从 Gitee 克隆**
 ```bash
 git clone https://gitee.com/zhang1106/idc_assest.git
 cd idc_assest
@@ -867,10 +875,15 @@ cp -r /var/www/idc_assest/backend/uploads ./
 ```bash
 cd /var/www/idc_assest
 
-# 拉取最新代码
-git fetch origin
-git checkout main
-git pull origin main
+# 方式一：从 GitHub 拉取最新代码（推荐）
+git fetch github
+git checkout master
+git pull github master
+
+# 方式二：从 Gitee 拉取最新代码
+# git fetch origin
+# git checkout master
+# git pull origin master
 ```
 
 #### 3. 更新依赖
