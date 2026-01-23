@@ -1715,6 +1715,283 @@ echo "备份验证完成"
 
 ---
 
+## 🚨 已部署项目更新指南
+
+> **📋 版本更新说明**：
+> 本节介绍如何将已部署的生产环境更新到最新版本，包含网卡管理、批量创建端口等新功能。
+
+### 更新前准备
+
+#### 1. 确认当前版本
+```bash
+# 检查最后更新日期
+cd /var/www/idc_assest
+git log -1 --format="%cd" --date=short
+
+# 查看当前分支
+git branch
+```
+
+#### 2. 备份现有数据（强制操作）
+```bash
+# 创建备份目录
+BACKUP_DIR="/var/backups/idc_assest/$(date +%Y%m%d_%H%M%S)"
+mkdir -p $BACKUP_DIR
+
+echo "开始备份..."
+
+# 备份数据库（SQLite）
+if [ -f "/var/www/idc_assest/backend/idc_management.db" ]; then
+    cp /var/www/idc_assest/backend/idc_management.db "$BACKUP_DIR/idc_management.db"
+    echo "✓ SQLite数据库已备份"
+fi
+
+# 备份数据库（MySQL）
+read -p "是否需要备份MySQL数据库? (y/n): " need_mysql
+if [ "$need_mysql" = "y" ]; then
+    read -p "MySQL用户名: " db_user
+    read -s -p "MySQL密码: " db_pass
+    echo
+    mysqldump -u $db_user -p$db_pass idc_management > "$BACKUP_DIR/database.sql"
+    echo "✓ MySQL数据库已备份"
+fi
+
+# 备份配置文件
+cp /var/www/idc_assest/backend/.env "$BACKUP_DIR/.env"
+cp /var/www/idc_assest/frontend/.env* "$BACKUP_DIR/" 2>/dev/null || true
+echo "✓ 配置文件已备份"
+
+# 备份上传文件
+cp -r /var/www/idc_assest/backend/uploads "$BACKUP_DIR/uploads" 2>/dev/null || true
+echo "✓ 上传文件已备份"
+
+echo ""
+echo "备份完成，保存在: $BACKUP_DIR"
+```
+
+### 数据库迁移
+
+#### SQLite 数据库更新
+
+```bash
+cd /var/www/idc_assest/backend
+
+# 方式一：使用迁移脚本（推荐）
+node scripts/migrate-v2.js
+
+# 预期输出：
+# ========================================
+#     IDC管理系统 - 数据库迁移脚本 v2.0
+# ========================================
+# 🔍 检测数据库类型...
+#    数据库类型: sqlite
+# 📋 开始迁移...
+# ...
+# ✅ 迁移完成！
+# ========================================
+#         迁移成功完成！🎉
+# ========================================
+```
+
+#### MySQL 数据库更新
+
+```bash
+cd /var/www/idc_assest/backend
+
+# 执行迁移脚本
+node scripts/migrate-v2.js
+
+# 预期输出：
+# ========================================
+#     IDC管理系统 - 数据库迁移脚本 v2.0
+# ========================================
+# 🔍 检测数据库类型...
+#    数据库类型: mysql
+# 📋 开始迁移...
+#    1. 创建 network_cards 表
+#    2. 为 device_ports 添加 nic_id 字段
+#    3. 创建相关索引
+# 🔄 执行 MySQL 迁移...
+#    → 创建表: network_cards
+#    → 检查 nic_id 字段是否存在...
+#    → 添加 nic_id 字段...
+#    → 创建 nic_id 索引...
+# ✅ 迁移完成！
+# ========================================
+#         迁移成功完成！🎉
+# ========================================
+```
+
+> **💡 提示**：迁移脚本会自动检测数据库类型并执行相应的迁移操作。
+
+### 更新后端代码
+
+```bash
+cd /var/www/idc_assest
+
+# 拉取最新代码
+git pull origin master
+
+# 更新依赖
+cd backend
+npm install --only=production
+
+# 检查新增的文件
+echo "新增的文件："
+git diff --name-only --diff-filter=A HEAD
+
+# 验证新模型文件
+ls -la models/NetworkCard.js
+ls -la routes/networkCards.js
+```
+
+### 注册新路由
+
+检查 `backend/server.js` 是否已包含新路由：
+
+```javascript
+// 确认以下代码存在
+const networkCardsRouter = require('./routes/networkCards');
+app.use('/api/network-cards', networkCardsRouter);
+```
+
+如果不存在，请手动添加：
+
+```bash
+# 编辑 server.js
+nano /var/www/idc_assest/backend/server.js
+
+# 在合适位置添加（通常在其他 app.use 语句附近）
+const networkCardsRouter = require('./routes/networkCards');
+app.use('/api/network-cards', networkCardsRouter);
+```
+
+### 重启后端服务
+
+```bash
+# 重启PM2进程
+pm2 restart idc-backend
+
+# 验证服务状态
+pm2 status idc-backend
+
+# 查看日志确认无错误
+pm2 logs idc-backend --lines 50
+```
+
+### 更新前端代码
+
+```bash
+cd /var/www/idc_assest/frontend
+
+# 拉取最新代码
+git pull origin master
+
+# 更新依赖
+npm install
+
+# 构建生产版本
+npm run build
+
+# 验证构建结果
+ls -la dist/
+
+# 部署到Web目录
+sudo rm -rf /var/www/idc-frontend/*
+sudo cp -r dist/* /var/www/idc-frontend/
+sudo chown -R www-data:www-data /var/www/idc-frontend
+```
+
+### 验证更新
+
+#### 1. API 接口验证
+
+```bash
+# 测试新API接口
+curl http://localhost:8000/api/network-cards
+
+# 预期返回：空数组或现有数据
+curl http://localhost:8000/api/device-ports
+
+# 预期返回：端口数据（可能包含 nic_id 字段）
+```
+
+#### 2. 前端功能验证
+
+访问管理界面，验证以下功能：
+
+- [ ] **网卡管理**
+  - [ ] 设备详情中显示"端口与网卡"标签页
+  - [ ] 可以创建新网卡
+  - [ ] 网卡列表正确显示
+  - [ ] 可以删除网卡（需无端口关联）
+
+- [ ] **端口管理**
+  - [ ] 可以创建端口时选择所属网卡
+  - [ ] 端口按网卡分组显示
+  - [ ] 显示未分组的端口
+
+- [ ] **批量创建端口**
+  - [ ] 输入格式如 `1/0/1-1/0/48` 可以创建多个端口
+  - [ ] 预览功能正确显示待创建端口数量
+
+#### 3. 数据库验证
+
+```bash
+# 验证新表存在
+sqlite3 /var/www/idc_assest/backend/idc_management.db ".tables"
+# 应包含：network_cards
+
+# 验证新字段
+sqlite3 /var/www/idc_assest/backend/idc_management.db ".schema device_ports" | grep nic_id
+# 应显示 nic_id 字段定义
+
+# 检查数据
+sqlite3 /var/www/idc_assest/backend/idc_management.db "SELECT COUNT(*) FROM network_cards;"
+```
+
+### 回滚操作（如果出现问题）
+
+```bash
+cd /var/www/idc_assest
+
+# 1. 停止服务
+pm2 stop idc-backend
+
+# 2. 恢复数据库
+# SQLite
+cp /var/backups/idc_assest/最新备份目录/idc_management.db backend/idc_management.db
+
+# 或 MySQL
+mysql -u idc_prod_user -p idc_management < /var/backups/idc_assest/最新备份目录/database.sql
+
+# 3. 恢复代码
+git checkout HEAD@{1}
+
+# 4. 重启服务
+pm2 start idc-backend
+
+# 5. 验证回滚
+curl http://localhost:8000/api/health
+```
+
+### 更新日志
+
+**v2.x.x 新增功能**：
+- 网卡（NIC）管理功能，支持为设备添加多块网卡
+- 端口与网卡关联，支持按网卡分组管理端口
+- 批量创建端口，支持端口范围格式（如 `1/0/1-1/0/48`）
+- 新增 `network_cards` 数据库表
+- `device_ports` 表新增 `nic_id` 字段
+- 新增API端点：
+  - `GET /api/network-cards` - 获取网卡列表
+  - `POST /api/network-cards` - 创建网卡
+  - `PUT /api/network-cards/:nicId` - 更新网卡
+  - `DELETE /api/network-cards/:nicId` - 删除网卡
+  - `GET /api/network-cards/device/:deviceId/with-ports` - 获取网卡及端口
+
+---
+
 ## 🔐 安全加固清单
 
 ### 服务器安全

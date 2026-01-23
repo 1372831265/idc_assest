@@ -1,6 +1,6 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { Layout, Menu, theme, Button, Dropdown, Avatar, message, Space, Divider, ConfigProvider as AntdConfigProvider } from 'antd';
-import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined, MenuUnfoldOutlined, MenuFoldOutlined, EyeOutlined, BuildOutlined, HomeOutlined, ShoppingCartOutlined, InboxOutlined, ImportOutlined, FileTextOutlined, UserOutlined, LogoutOutlined, HistoryOutlined, AuditOutlined, ToolOutlined, ScheduleOutlined, SettingOutlined } from '@ant-design/icons';
+import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined, MenuUnfoldOutlined, MenuFoldOutlined, EyeOutlined, BuildOutlined, HomeOutlined, ShoppingCartOutlined, InboxOutlined, ImportOutlined, FileTextOutlined, UserOutlined, LogoutOutlined, HistoryOutlined, AuditOutlined, ToolOutlined, ScheduleOutlined, SettingOutlined, ApiOutlined, PartitionOutlined } from '@ant-design/icons';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ConfigProvider, useConfig } from './context/ConfigContext';
@@ -23,6 +23,8 @@ const TicketCategoryManagement = lazy(() => import('./pages/TicketCategoryManage
 const TicketStatistics = lazy(() => import('./pages/TicketStatistics'));
 const TicketFieldManagement = lazy(() => import('./pages/TicketFieldManagement'));
 const SystemSettings = lazy(() => import('./pages/SystemSettings'));
+const CableManagement = lazy(() => import('./pages/CableManagement'));
+const PortManagement = lazy(() => import('./pages/PortManagement'));
 
 const { Header, Content, Sider } = Layout;
 
@@ -144,7 +146,7 @@ const AppLayout = ({ children }) => {
     const path = location.pathname;
     if (path === '/') return 'dashboard';
     if (path.startsWith('/rooms') || path.startsWith('/racks') || path.startsWith('/visualization')) return 'room-management';
-    if (path.startsWith('/devices') || path.startsWith('/fields')) return 'asset-management';
+    if (path.startsWith('/devices') || path.startsWith('/fields') || path.startsWith('/cables') || path.startsWith('/ports')) return 'asset-management';
     if (path.startsWith('/consumables')) return 'consumables-management';
     if (path.startsWith('/users') || path.startsWith('/login-history') || path.startsWith('/operation-logs') || path.startsWith('/settings')) return 'system-management';
     if (path.startsWith('/tickets')) return 'ticket-management';
@@ -243,6 +245,16 @@ const AppLayout = ({ children }) => {
           key: 'fields',
           icon: <DatabaseOutlined style={{ fontSize: '16px' }} />,
           label: <Link to="/fields">字段管理</Link>,
+        },
+        {
+          key: 'cables',
+          icon: <ApiOutlined style={{ fontSize: '16px' }} />,
+          label: <Link to="/cables">接线管理</Link>,
+        },
+        {
+          key: 'ports',
+          icon: <PartitionOutlined style={{ fontSize: '16px' }} />,
+          label: <Link to="/ports">端口管理</Link>,
         },
       ],
     },
@@ -578,6 +590,8 @@ const ThemeConfig = () => {
             <Route path="/ticket-statistics" element={<PrivateRoute><TicketStatistics /></PrivateRoute>} />
             <Route path="/ticket-fields" element={<PrivateRoute><TicketFieldManagement /></PrivateRoute>} />
             <Route path="/settings" element={<PrivateRoute><SystemSettings /></PrivateRoute>} />
+            <Route path="/cables" element={<PrivateRoute><CableManagement /></PrivateRoute>} />
+            <Route path="/ports" element={<PrivateRoute><PortManagement /></PrivateRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

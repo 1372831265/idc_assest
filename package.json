@@ -17,5 +17,8 @@
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "papaparse": "^5.5.3"
   }
 }

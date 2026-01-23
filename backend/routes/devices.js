@@ -893,15 +893,35 @@ router.delete('/:deviceId', async (req, res) => {
     });
     
     if (deleted) {
-      // 更新机柜当前功率
-      const rack = await Rack.findByPk(device.rackId);
-      if (rack) {
-        await rack.update({
-          currentPower: Math.max(0, rack.currentPower - device.powerConsumption)
-        });
+      const Cable = require('../models/Cable');
+      
+      const deletedCables = await Cable.destroy({
+        where: {
+          [Op.or]: [
+            { sourceDeviceId: req.params.deviceId },
+            { targetDeviceId: req.params.deviceId }
+          ]
+        }
+      });
+      
+      if (deletedCables > 0) {
+        console.log(`已删除 ${deletedCables} 条相关接线`);
       }
       
-      res.status(204).json();
+      if (device.rackId) {
+        const rack = await Rack.findByPk(device.rackId);
+        if (rack) {
+          await rack.update({
+            currentPower: Math.max(0, rack.currentPower - device.powerConsumption)
+          });
+        }
+      }
+      
+      res.status(200).json({ 
+        message: '删除成功',
+        deviceId: req.params.deviceId,
+        deletedCablesCount: deletedCables
+      });
     } else {
       res.status(404).json({ error: '设备不存在' });
     }

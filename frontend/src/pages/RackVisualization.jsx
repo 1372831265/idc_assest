@@ -7,10 +7,11 @@ import {
   MobileOutlined, PrinterOutlined, SettingOutlined,
   SearchOutlined, ClearOutlined, EnvironmentOutlined,
   FilterOutlined, AppstoreOutlined, UnorderedListOutlined,
-  FullscreenOutlined, CompressOutlined, EyeOutlined
+  FullscreenOutlined, CompressOutlined, EyeOutlined, ApiOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 import DeviceComponent from '../components/DeviceComponent';
+import DeviceDetailDrawer from '../components/DeviceDetailDrawer';
 import './RackVisualization.css';
 
 const { Option } = Select;
@@ -392,6 +393,14 @@ function RackVisualization() {
   const [loadingTooltipFields, setLoadingTooltipFields] = useState(false); // 加载字段配置状态
   const [savingTooltipConfig, setSavingTooltipConfig] = useState(false); // 保存配置状态
   const [deviceCache, setDeviceCache] = useState({}); // 设备数据缓存，键为rackId，值为设备数据
+
+  // 接线管理相关状态
+  const [cables, setCables] = useState([]); // 接线列表
+  const [showCables, setShowCables] = useState(true); // 是否显示接线
+
+  // 设备详情抽屉状态
+  const [selectedDevice, setSelectedDevice] = useState(null); // 当前选中设备
+  const [detailDrawerVisible, setDetailDrawerVisible] = useState(false); // 详情抽屉显示状态
 
   // 设备搜索功能
   const [searchKeyword, setSearchKeyword] = useState(''); // 搜索关键词
@@ -815,10 +824,25 @@ function RackVisualization() {
   useEffect(() => {
     if (selectedRack?.rackId) {
       fetchDevices(selectedRack.rackId);
+      fetchCablesForRack(selectedRack.rackId);
     } else {
       setDevices([]);
+      setCables([]);
     }
   }, [selectedRack, fetchDevices]);
+
+  // 获取机柜的接线数据
+  const fetchCablesForRack = useCallback(async (rackId) => {
+    try {
+      const response = await axios.get('/api/cables');
+      const rackCables = (response.data.cables || []).filter(cable => 
+        cable.sourceDevice?.rackId === rackId || cable.targetDevice?.rackId === rackId
+      );
+      setCables(rackCables);
+    } catch (error) {
+      console.error('获取接线数据失败:', error);
+    }
+  }, []);
 
   // 打开字段配置模态框时获取数据
   const handleOpenTooltipConfig = () => {
@@ -1208,6 +1232,14 @@ function RackVisualization() {
           >
             字段配置
           </Button>
+          <Button
+            className={showCables ? 'primary-button' : 'secondary-button'}
+            icon={<ApiOutlined />}
+            onClick={() => setShowCables(!showCables)}
+            type={showCables ? 'primary' : 'default'}
+          >
+            {showCables ? '隐藏接线' : '显示接线'}
+          </Button>
         </div>
       </Card>
 
@@ -1510,11 +1542,15 @@ function RackVisualization() {
                               borderTop: isHighlighted
                                 ? `2px solid ${statusTheme.topBorderColor}`
                                 : `1px solid ${statusTheme.topBorderColor}`
-                            }}
-                            onMouseEnter={(e) => {
-                              const isOneU = (device?.height || 1) === 1;
-                              const isFaultStatus = device?.status === 'error' || device?.status === 'fault';
-                              if (isOneU && !isFaultStatus) {
+                              }}
+                              onClick={(e) => {
+                                setSelectedDevice(device);
+                                setDetailDrawerVisible(true);
+                              }}
+                              onMouseEnter={(e) => {
+                                const isOneU = (device?.height || 1) === 1;
+                                const isFaultStatus = device?.status === 'error' || device?.status === 'fault';
+                                if (isOneU && !isFaultStatus) {
                                 e.currentTarget.style.height = '33px';
                                 e.currentTarget.style.zIndex = '150';
                               }
@@ -1686,6 +1722,71 @@ function RackVisualization() {
                   
                   {/* 机柜顶部 */}
                   <div className="rack-top" />
+                  
+                  {/* 接线连线层 */}
+                  {showCables && cables.length > 0 && (
+                    <svg 
+                      className="cable-connections"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: 'none',
+                        zIndex: 50
+                      }}
+                    >
+                      {cables.map((cable, index) => {
+                        const sourceDevice = devices.find(d => d.deviceId === cable.sourceDeviceId);
+                        const targetDevice = devices.find(d => d.deviceId === cable.targetDeviceId);
+                        
+                        if (!sourceDevice || !targetDevice) return null;
+                        
+                        const sourceStyle = getDeviceStyle(sourceDevice, selectedRack.height);
+                        const targetStyle = getDeviceStyle(targetDevice, selectedRack.height);
+                        
+                        const sourceTop = parseInt(sourceStyle.top);
+                        const sourceHeight = parseInt(sourceStyle.height);
+                        const targetTop = parseInt(targetStyle.top);
+                        const targetHeight = parseInt(targetStyle.height);
+                        
+                        const sourceX = 50;
+                        const sourceY = sourceTop + sourceHeight / 2;
+                        const targetX = 50;
+                        const targetY = targetTop + targetHeight / 2;
+                        
+                        const cableColor = cable.status === 'normal' ? '#10b981' : 
+                                        cable.status === 'fault' ? '#ef4444' : '#6b7280';
+                        const cableDash = cable.cableType === 'fiber' ? '5,5' : 'none';
+                        
+                        return (
+                          <g key={cable.cableId}>
+                            <path
+                              d={`M ${sourceX} ${sourceY} Q ${sourceX + 30} ${(sourceY + targetY) / 2} ${targetX} ${targetY}`}
+                              stroke={cableColor}
+                              strokeWidth="2"
+                              fill="none"
+                              strokeDasharray={cableDash}
+                              opacity="0.7"
+                            />
+                            <circle
+                              cx={sourceX}
+                              cy={sourceY}
+                              r="4"
+                              fill={cableColor}
+                            />
+                            <circle
+                              cx={targetX}
+                              cy={targetY}
+                              r="4"
+                              fill={cableColor}
+                            />
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  )}
                   
                   {/* 机柜名称和设备数量 */}
                   <div className="rack-header">
@@ -1897,6 +1998,18 @@ function RackVisualization() {
             </div>
           </div>
         )}
+        
+        {/* 设备详情抽屉 */}
+        <DeviceDetailDrawer
+          device={selectedDevice}
+          visible={detailDrawerVisible}
+          onClose={() => {
+            setDetailDrawerVisible(false);
+            setSelectedDevice(null);
+          }}
+          cables={cables}
+          onRefreshCables={() => selectedRack?.rackId && fetchCablesForRack(selectedRack.rackId)}
+        />
       </Card>
     </div>
   );
