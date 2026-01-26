@@ -83,15 +83,27 @@ router.post('/config', async (req, res) => {
     // 批量更新字段配置
     const updatedFields = [];
     for (const config of fieldConfigs) {
-      // 使用fieldName作为更新条件，因为这是唯一的
-      const [updated] = await DeviceField.update(
-        { visible: config.visible },
-        { where: { fieldName: config.fieldName } }
-      );
+      // 检查字段是否存在
+      const existingField = await DeviceField.findOne({ where: { fieldName: config.fieldName } });
       
-      if (updated) {
-        const updatedField = await DeviceField.findOne({ where: { fieldName: config.fieldName } });
-        updatedFields.push(updatedField);
+      if (existingField) {
+        // 更新现有字段
+        await existingField.update({ 
+            visible: config.visible,
+            displayName: config.displayName // 同时更新显示名称，以防变化
+        });
+        updatedFields.push(existingField);
+      } else {
+        // 创建新字段
+        const newField = await DeviceField.create({
+            fieldName: config.fieldName,
+            visible: config.visible,
+            displayName: config.displayName,
+            fieldType: config.fieldType || 'text',
+            required: false, // 默认为非必填
+            order: 0 // 默认顺序
+        });
+        updatedFields.push(newField);
       }
     }
     

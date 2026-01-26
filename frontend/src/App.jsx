@@ -1,6 +1,6 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { Layout, Menu, theme, Button, Dropdown, Avatar, message, Space, Divider, ConfigProvider as AntdConfigProvider } from 'antd';
-import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined, MenuUnfoldOutlined, MenuFoldOutlined, EyeOutlined, BuildOutlined, HomeOutlined, ShoppingCartOutlined, InboxOutlined, ImportOutlined, FileTextOutlined, UserOutlined, LogoutOutlined, HistoryOutlined, AuditOutlined, ToolOutlined, ScheduleOutlined, SettingOutlined, ApiOutlined, PartitionOutlined } from '@ant-design/icons';
+import { BarChartOutlined, DatabaseOutlined, CloudServerOutlined, MenuUnfoldOutlined, MenuFoldOutlined, EyeOutlined, BuildOutlined, HomeOutlined, ShoppingCartOutlined, InboxOutlined, ImportOutlined, FileTextOutlined, UserOutlined, LogoutOutlined, HistoryOutlined, AuditOutlined, ToolOutlined, ScheduleOutlined, SettingOutlined, ApiOutlined, PartitionOutlined, CodepenOutlined } from '@ant-design/icons';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ConfigProvider, useConfig } from './context/ConfigContext';
@@ -11,7 +11,7 @@ const DeviceManagement = lazy(() => import('./pages/DeviceManagement'));
 const RackManagement = lazy(() => import('./pages/RackManagement'));
 const RoomManagement = lazy(() => import('./pages/RoomManagement'));
 const DeviceFieldManagement = lazy(() => import('./pages/DeviceFieldManagement'));
-const RackVisualization = lazy(() => import('./pages/RackVisualization'));
+const Rack3DVisualization = lazy(() => import('./pages/Rack3DVisualization'));
 const ConsumableManagement = lazy(() => import('./pages/ConsumableManagement'));
 const ConsumableStatistics = lazy(() => import('./pages/ConsumableStatistics'));
 const ConsumableLogs = lazy(() => import('./pages/ConsumableLogs'));
@@ -145,7 +145,8 @@ const AppLayout = ({ children }) => {
   const getSelectedKey = () => {
     const path = location.pathname;
     if (path === '/') return 'dashboard';
-    if (path.startsWith('/rooms') || path.startsWith('/racks') || path.startsWith('/visualization')) return 'room-management';
+    if (path.startsWith('/visualization-3d')) return 'visualization-3d';
+    if (path.startsWith('/rooms') || path.startsWith('/racks')) return 'room-management';
     if (path.startsWith('/devices') || path.startsWith('/fields') || path.startsWith('/cables') || path.startsWith('/ports')) return 'asset-management';
     if (path.startsWith('/consumables')) return 'consumables-management';
     if (path.startsWith('/users') || path.startsWith('/login-history') || path.startsWith('/operation-logs') || path.startsWith('/settings')) return 'system-management';
@@ -225,9 +226,9 @@ const AppLayout = ({ children }) => {
           label: <Link to="/racks">机柜管理</Link>,
         },
         {
-          key: 'visualization',
-          icon: <EyeOutlined style={{ fontSize: '16px' }} />,
-          label: <Link to="/visualization">机柜可视化</Link>,
+          key: 'visualization-3d',
+          icon: <CodepenOutlined style={{ fontSize: '16px' }} />,
+          label: <Link to="/visualization-3d">3D机柜可视化</Link>,
         },
       ],
     },
@@ -579,7 +580,7 @@ const ThemeConfig = () => {
             <Route path="/racks" element={<PrivateRoute><RackManagement /></PrivateRoute>} />
             <Route path="/rooms" element={<PrivateRoute><RoomManagement /></PrivateRoute>} />
             <Route path="/fields" element={<PrivateRoute><DeviceFieldManagement /></PrivateRoute>} />
-            <Route path="/visualization" element={<PrivateRoute><RackVisualization /></PrivateRoute>} />
+            <Route path="/visualization-3d" element={<PrivateRoute><Rack3DVisualization /></PrivateRoute>} />
             <Route path="/consumables" element={<PrivateRoute><ConsumableManagement /></PrivateRoute>} />
             <Route path="/consumables-categories" element={<PrivateRoute><CategoryManagement /></PrivateRoute>} />
             <Route path="/consumables-stats" element={<PrivateRoute><ConsumableStatistics /></PrivateRoute>} />

@@ -64,6 +64,7 @@ const ticketFieldRoutes = require('./routes/ticketFields');
 const systemSettingsRoutes = require('./routes/systemSettings');
 const cableRoutes = require('./routes/cables');
 const devicePortRoutes = require('./routes/devicePorts');
+const networkCardRoutes = require('./routes/networkCards');
 
 // 使用路由
 app.use('/api/devices', deviceRoutes);
@@ -83,6 +84,7 @@ app.use('/api/ticket-fields', ticketFieldRoutes);
 app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/cables', cableRoutes);
 app.use('/api/device-ports', devicePortRoutes);
+app.use('/api/network-cards', networkCardRoutes);
 
 // 静态文件服务
 app.use('/uploads', express.static('uploads'));

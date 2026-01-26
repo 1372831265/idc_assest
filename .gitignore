@@ -25,6 +25,7 @@ lerna-debug.log*
 .vscode/
 .idea/
 .trae/
+.vercel/
 *.swp
 *.swo
 *~

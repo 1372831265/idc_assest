@@ -16,7 +16,7 @@ const Rack = sequelize.define('Rack', {
   height: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    defaultValue: 42 // 标准机柜高度（U数）
+    defaultValue: 45 // 标准机柜高度（U数）
   },
   maxPower: {
     type: DataTypes.FLOAT,

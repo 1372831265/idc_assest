@@ -90,6 +90,52 @@ router.get('/device/:deviceId', async (req, res) => {
   }
 });
 
+// 获取指定机柜内所有设备的接线
+router.get('/rack/:rackId', async (req, res) => {
+  try {
+    const { rackId } = req.params;
+    
+    // 1. 找出该机柜下的所有设备ID
+    const devices = await Device.findAll({
+      where: { rackId: rackId },
+      attributes: ['deviceId']
+    });
+    
+    const deviceIds = devices.map(d => d.deviceId);
+    
+    if (deviceIds.length === 0) {
+      return res.json([]);
+    }
+
+    // 2. 查找这些设备参与的所有接线
+    const cables = await Cable.findAll({
+      where: {
+        [Op.or]: [
+          { sourceDeviceId: { [Op.in]: deviceIds } },
+          { targetDeviceId: { [Op.in]: deviceIds } }
+        ]
+      },
+      include: [
+        {
+          model: Device,
+          as: 'sourceDevice',
+          attributes: ['deviceId', 'name', 'type', 'rackId']
+        },
+        {
+          model: Device,
+          as: 'targetDevice',
+          attributes: ['deviceId', 'name', 'type', 'rackId']
+        }
+      ]
+    });
+    
+    res.json(cables);
+  } catch (error) {
+    console.error('获取机柜接线失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/', async (req, res) => {
   try {
     const { cableId, sourceDeviceId, sourcePort, targetDeviceId, targetPort, cableType, cableLength, status, description } = req.body;

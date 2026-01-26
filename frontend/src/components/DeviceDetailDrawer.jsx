@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Drawer, Tabs, Tag, Space, Typography, Empty, Card, Tooltip } from 'antd';
-import { ApiOutlined, CloudServerOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { Drawer, Tabs, Tag, Space, Typography, Empty, Card, Tooltip, Button, Popconfirm } from 'antd';
+import { ApiOutlined, CloudServerOutlined, EnvironmentOutlined, EditOutlined, PlusCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import NetworkCardPanel from './NetworkCardPanel';
 
 const { Text, Title } = Typography;
@@ -18,7 +18,7 @@ const designTokens = {
   }
 };
 
-function DeviceDetailDrawer({ device, visible, onClose, cables, onRefreshCables }) {
+function DeviceDetailDrawer({ device, visible, onClose, cables, onRefreshCables, onEdit, onAddNic, onAddPort, onAddCable, onDeleteCable, tooltipFields, refreshTrigger }) {
   const [activeTab, setActiveTab] = useState('ports');
 
   const deviceCables = useMemo(() => {
@@ -55,6 +55,34 @@ function DeviceDetailDrawer({ device, visible, onClose, cables, onRefreshCables 
     return typeMap[type?.toLowerCase()] || type || '未知设备';
   }, []);
 
+  const renderFieldValue = useCallback((field, device) => {
+      const fieldKey = field.field;
+      if (fieldKey === 'status') return getStatusTag(device.status);
+      
+      let value = device[fieldKey];
+      
+      if (fieldKey === 'type') value = getDeviceTypeName(value);
+      else if (fieldKey === 'position') value = `U${device.position} ${device.height ? `(${device.height}U)` : ''}`;
+      
+      return <Text strong style={{ fontSize: '14px' }}>{value || '-'}</Text>;
+  }, [getStatusTag, getDeviceTypeName]);
+
+  const displayFields = useMemo(() => {
+      if (tooltipFields && Object.keys(tooltipFields).length > 0) {
+          return Object.values(tooltipFields).filter(f => f.enabled);
+      }
+      
+      // Default fallback fields if no config
+      return [
+          { field: 'deviceId', label: '设备ID' },
+          { field: 'type', label: '设备类型' },
+          { field: 'status', label: '设备状态' },
+          { field: 'position', label: '位置' },
+          { field: 'ipAddress', label: 'IP地址' },
+          { field: 'brand', label: '品牌' }
+      ];
+  }, [tooltipFields]);
+
   const tabItems = [
     {
       key: 'ports',
@@ -69,6 +97,7 @@ function DeviceDetailDrawer({ device, visible, onClose, cables, onRefreshCables 
           deviceId={device?.deviceId}
           deviceName={device?.name}
           onRefresh={onRefreshCables}
+          refreshTrigger={refreshTrigger}
         />
       )
     },
@@ -91,6 +120,16 @@ function DeviceDetailDrawer({ device, visible, onClose, cables, onRefreshCables 
                   key={cable.cableId}
                   size="small"
                   style={{ borderRadius: '8px' }}
+                  extra={
+                    <Popconfirm
+                      title="确定要删除这条接线吗？"
+                      onConfirm={() => onDeleteCable?.(cable.cableId)}
+                      okText="确定"
+                      cancelText="取消"
+                    >
+                      <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                    </Popconfirm>
+                  }
                 >
                   <div style={{ marginBottom: designTokens.spacing.sm }}>
                     <Space direction="vertical" size={4}>
@@ -150,9 +189,25 @@ function DeviceDetailDrawer({ device, visible, onClose, cables, onRefreshCables 
         </Space>
       }
       placement="right"
-      width={520}
+      width={600}
       open={visible}
       onClose={onClose}
+      extra={
+        <Space>
+          <Tooltip title="编辑设备信息">
+            <Button icon={<EditOutlined />} onClick={() => onEdit?.(device)} />
+          </Tooltip>
+          <Tooltip title="添加网卡">
+            <Button icon={<PlusCircleOutlined />} onClick={() => onAddNic?.(device)}>加网卡</Button>
+          </Tooltip>
+          <Tooltip title="添加端口">
+            <Button icon={<ApiOutlined />} onClick={() => onAddPort?.(device)}>加端口</Button>
+          </Tooltip>
+          <Tooltip title="添加接线">
+            <Button icon={<EnvironmentOutlined />} onClick={() => onAddCable?.(device)}>加接线</Button>
+          </Tooltip>
+        </Space>
+      }
       styles={{ body: { padding: '16px 20px', overflow: 'auto' } }}
     >
       <div className="device-info-section" style={{ marginBottom: '20px' }}>
@@ -165,36 +220,12 @@ function DeviceDetailDrawer({ device, visible, onClose, cables, onRefreshCables 
           padding: '16px',
           borderRadius: '10px'
         }}>
-          <div className="info-item">
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>设备ID</Text>
-            <Text strong style={{ fontSize: '14px' }}>{device.deviceId}</Text>
-          </div>
-          <div className="info-item">
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>设备类型</Text>
-            <Text strong style={{ fontSize: '14px' }}>{getDeviceTypeName(device.type)}</Text>
-          </div>
-          <div className="info-item">
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>设备状态</Text>
-            {getStatusTag(device.status)}
-          </div>
-          <div className="info-item">
-            <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>位置</Text>
-            <Text strong style={{ fontSize: '14px' }}>
-              U{device.position} {device.height && `(${device.height}U)`}
-            </Text>
-          </div>
-          {device.ipAddress && (
-            <div className="info-item">
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>IP地址</Text>
-              <Text strong style={{ fontSize: '14px' }}>{device.ipAddress}</Text>
+          {displayFields.map(field => (
+            <div className="info-item" key={field.field}>
+              <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>{field.label}</Text>
+              {renderFieldValue(field, device)}
             </div>
-          )}
-          {device.brand && (
-            <div className="info-item">
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>品牌</Text>
-              <Text strong style={{ fontSize: '14px' }}>{device.brand}</Text>
-            </div>
-          )}
+          ))}
         </div>
       </div>
 

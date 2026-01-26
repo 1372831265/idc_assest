@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "antd": "^5.8.6",
     "axios": "^1.5.0",
     "dayjs": "^1.11.19",
@@ -17,7 +19,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.15.0",
-    "three": "^0.160.0",
+    "three": "^0.160.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

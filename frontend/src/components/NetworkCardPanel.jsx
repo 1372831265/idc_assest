@@ -18,7 +18,7 @@ const designTokens = {
   }
 };
 
-function NetworkCardPanel({ deviceId, deviceName, onRefresh }) {
+function NetworkCardPanel({ deviceId, deviceName, onRefresh, refreshTrigger }) {
   const [cards, setCards] = useState([]);
   const [networkCards, setNetworkCards] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ function NetworkCardPanel({ deviceId, deviceName, onRefresh }) {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, refreshTrigger]);
 
   const handleDeleteCard = useCallback(async (card) => {
     try {

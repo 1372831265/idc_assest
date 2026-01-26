@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
+const { sequelize } = require('../db'); // Import sequelize for transactions
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
@@ -11,6 +12,8 @@ const Rack = require('../models/Rack');
 const Room = require('../models/Room');
 const DeviceField = require('../models/DeviceField');
 const Ticket = require('../models/Ticket');
+const DevicePort = require('../models/DevicePort'); // Import DevicePort
+const Cable = require('../models/Cable'); // Import Cable
 
 // 获取所有设备（支持搜索和筛选）
 router.get('/', async (req, res) => {
@@ -841,91 +844,150 @@ router.put('/batch-offline', async (req, res) => {
 
 // 批量删除设备
 router.delete('/batch-delete', async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { deviceIds } = req.body;
     
     if (!deviceIds || !Array.isArray(deviceIds) || deviceIds.length === 0) {
+      await t.rollback();
       return res.status(400).json({ error: '请提供有效的设备ID列表' });
     }
     
     const devices = await Device.findAll({
-      where: { deviceId: { [Op.in]: deviceIds } }
+      where: { deviceId: { [Op.in]: deviceIds } },
+      transaction: t
     });
     
+    // 1. 删除相关接线 (Delete associated Cables)
+    await Cable.destroy({
+      where: {
+        [Op.or]: [
+          { sourceDeviceId: { [Op.in]: deviceIds } },
+          { targetDeviceId: { [Op.in]: deviceIds } }
+        ]
+      },
+      transaction: t
+    });
+
+    // 2. 删除相关端口 (Delete associated DevicePorts)
+    await DevicePort.destroy({
+      where: { deviceId: { [Op.in]: deviceIds } },
+      transaction: t
+    });
+    
+    // 3. 解除工单关联
     await Ticket.update(
       { deviceId: null },
-      { where: { deviceId: { [Op.in]: deviceIds } } }
+      { where: { deviceId: { [Op.in]: deviceIds } }, transaction: t }
     );
     
+    // 4. 删除设备
     const deletedCount = await Device.destroy({
-      where: { deviceId: { [Op.in]: deviceIds } }
+      where: { deviceId: { [Op.in]: deviceIds } },
+      transaction: t
     });
     
+    // 更新机柜功率
     for (const device of devices) {
-      const rack = await Rack.findByPk(device.rackId);
-      if (rack) {
-        await rack.update({
-          currentPower: Math.max(0, rack.currentPower - device.powerConsumption)
-        });
+      if (device.rackId) {
+        const rack = await Rack.findByPk(device.rackId, { transaction: t });
+        if (rack) {
+          await rack.update({
+            currentPower: Math.max(0, rack.currentPower - device.powerConsumption)
+          }, { transaction: t });
+        }
       }
     }
+
+    await t.commit();
     
     res.json({
       message: `批量删除成功，已删除 ${deletedCount} 个设备`,
       deletedCount
     });
   } catch (error) {
+    await t.rollback();
     res.status(500).json({ error: error.message });
   }
 });
 
 // 删除设备
 router.delete('/:deviceId', async (req, res) => {
+  const t = await sequelize.transaction();
   try {
+    const { deviceId } = req.params;
+    
     // 获取设备信息以更新功率
-    const device = await Device.findByPk(req.params.deviceId);
+    const device = await Device.findByPk(deviceId, { transaction: t });
     if (!device) {
+      await t.rollback();
       return res.status(404).json({ error: '设备不存在' });
     }
     
-    const deleted = await Device.destroy({
-      where: { deviceId: req.params.deviceId }
+    // 1. 删除相关接线 (Delete associated Cables)
+    // 必须在删除设备之前删除，否则可能触发外键约束错误
+    const deletedCables = await Cable.destroy({
+      where: {
+        [Op.or]: [
+          { sourceDeviceId: deviceId },
+          { targetDeviceId: deviceId }
+        ]
+      },
+      transaction: t
     });
     
-    if (deleted) {
-      const Cable = require('../models/Cable');
-      
-      const deletedCables = await Cable.destroy({
-        where: {
-          [Op.or]: [
-            { sourceDeviceId: req.params.deviceId },
-            { targetDeviceId: req.params.deviceId }
-          ]
-        }
-      });
-      
-      if (deletedCables > 0) {
-        console.log(`已删除 ${deletedCables} 条相关接线`);
-      }
-      
-      if (device.rackId) {
+    // 2. 删除相关端口 (Delete associated DevicePorts)
+    // 必须在删除设备之前删除，否则触发外键约束错误
+    const deletedPorts = await DevicePort.destroy({
+      where: { deviceId: deviceId },
+      transaction: t
+    });
+
+    // 3. 解除工单关联 (Unlink Tickets)
+    await Ticket.update(
+      { deviceId: null },
+      { where: { deviceId: deviceId }, transaction: t }
+    );
+    
+    // 4. 删除设备 (Delete Device)
+    await Device.destroy({
+      where: { deviceId: deviceId },
+      transaction: t
+    });
+    
+    // 提交事务
+    await t.commit();
+    
+    if (deletedCables > 0) {
+      console.log(`已删除 ${deletedCables} 条相关接线`);
+    }
+    
+    // 更新机柜功率 (Update Rack power)
+    // 注意：设备已删除，不需要再减去功率？或者需要？
+    // 原逻辑是：rack.currentPower - device.powerConsumption
+    // 既然设备已经物理删除了，机柜的当前功率确实应该减少。
+    if (device.rackId) {
+      try {
         const rack = await Rack.findByPk(device.rackId);
         if (rack) {
           await rack.update({
             currentPower: Math.max(0, rack.currentPower - device.powerConsumption)
           });
         }
+      } catch (err) {
+        console.error('更新机柜功率失败:', err);
       }
-      
-      res.status(200).json({ 
-        message: '删除成功',
-        deviceId: req.params.deviceId,
-        deletedCablesCount: deletedCables
-      });
-    } else {
-      res.status(404).json({ error: '设备不存在' });
     }
+    
+    res.status(200).json({ 
+      message: '删除成功',
+      deviceId: deviceId,
+      deletedCablesCount: deletedCables,
+      deletedPortsCount: deletedPorts
+    });
   } catch (error) {
+    await t.rollback();
+    console.error('删除设备失败:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -78,7 +78,7 @@ router.get('/device/:deviceId', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { portId, deviceId, portName, portType, portSpeed, status, vlanId, description } = req.body;
+    const { portId, deviceId, nicId, portName, portType, portSpeed, status, vlanId, description } = req.body;
     
     if (!deviceId || !portName) {
       return res.status(400).json({ error: '缺少必填字段' });
@@ -97,6 +97,7 @@ router.post('/', async (req, res) => {
     const port = await DevicePort.create({
       portId: autoPortId,
       deviceId,
+      nicId: nicId || null,
       portName,
       portType: portType || 'RJ45',
       portSpeed: portSpeed || '1G',
@@ -156,6 +157,7 @@ router.post('/batch', async (req, res) => {
         await DevicePort.create({
           portId: portData.portId,
           deviceId: portData.deviceId,
+          nicId: portData.nicId || null,
           portName: portData.portName,
           portType: portData.portType || 'RJ45',
           portSpeed: portData.portSpeed || '1G',

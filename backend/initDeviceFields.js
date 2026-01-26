@@ -127,6 +127,38 @@ const defaultDeviceFields = [
     required: false,
     order: 14,
     visible: true
+  },
+  {
+    fieldName: 'owner',
+    displayName: '责任人',
+    fieldType: 'string',
+    required: false,
+    order: 15,
+    visible: true
+  },
+  {
+    fieldName: 'department',
+    displayName: '所属部门',
+    fieldType: 'string',
+    required: false,
+    order: 16,
+    visible: true
+  },
+  {
+    fieldName: 'assetId',
+    displayName: '资产编号',
+    fieldType: 'string',
+    required: false,
+    order: 17,
+    visible: true
+  },
+  {
+    fieldName: 'brand',
+    displayName: '品牌',
+    fieldType: 'string',
+    required: false,
+    order: 18,
+    visible: true
   }
 ];
 

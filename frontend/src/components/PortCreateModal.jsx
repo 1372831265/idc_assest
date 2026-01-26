@@ -84,9 +84,11 @@ function PortCreateModal({ device, visible, onClose, onSuccess, defaultNicId, ne
   const [previewPorts, setPreviewPorts] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
   const [nicList, setNicList] = useState([]);
+  const prevVisibleRef = React.useRef(false);
 
   useEffect(() => {
-    if (visible) {
+    // 只有当 visible 从 false 变为 true 时才执行初始化
+    if (visible && !prevVisibleRef.current) {
       setPreviewPorts([]);
       setShowPreview(false);
       form.resetFields();
@@ -95,12 +97,13 @@ function PortCreateModal({ device, visible, onClose, onSuccess, defaultNicId, ne
         form.setFieldsValue({ nicId: defaultNicId });
       }
 
-      if (device?.deviceId && networkCards.length === 0) {
+      if (device?.deviceId && (!networkCards || networkCards.length === 0)) {
         fetchNetworkCards();
-      } else if (networkCards.length > 0) {
+      } else if (networkCards && networkCards.length > 0) {
         setNicList(networkCards);
       }
     }
+    prevVisibleRef.current = visible;
   }, [visible, device, defaultNicId, networkCards, form]);
 
   const fetchNetworkCards = async () => {
@@ -205,6 +208,7 @@ function PortCreateModal({ device, visible, onClose, onSuccess, defaultNicId, ne
       okText={portCount > 1 ? `创建 ${portCount} 个端口` : '创建'}
       cancelText="取消"
       width={560}
+      zIndex={1050}
       styles={{ body: { padding: '20px 24px' } }}
     >
       <Form
@@ -259,7 +263,7 @@ function PortCreateModal({ device, visible, onClose, onSuccess, defaultNicId, ne
           label={
             <Space>
               端口名称
-              <Tooltip title="支持单个端口（如 eth0/1）或端口范围（如 1/0/1-1/0/48）">
+              <Tooltip title="支持单个端口（如 eth0/1）或端口范围（如 1/0/1-1/0/48）" mouseEnterDelay={0.5}>
                 <InfoCircleOutlined style={{ color: '#999' }} />
               </Tooltip>
             </Space>
@@ -284,7 +288,11 @@ function PortCreateModal({ device, visible, onClose, onSuccess, defaultNicId, ne
         >
           <Input 
             placeholder="例如: eth0/1 或 1/0/1-1/0/48" 
-            onChange={handlePortNameChange}
+            onChange={(e) => {
+              // 确保 Form 值更新
+              form.setFieldValue('portName', e.target.value);
+              handlePortNameChange(e);
+            }}
           />
         </Form.Item>
 
