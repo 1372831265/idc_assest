@@ -3,14 +3,18 @@
  * 为 consumables 表添加 version 字段
  */
 
+require('dotenv').config();
 const { sequelize, dbDialect } = require('../db');
+
+// 从环境变量重新确定数据库类型
+const actualDbType = process.env.DB_TYPE || 'sqlite';
 
 async function migrate() {
   try {
     console.log('开始执行耗材乐观锁迁移...');
-    console.log('数据库类型:', dbDialect);
+    console.log('数据库类型:', actualDbType);
 
-    if (dbDialect === 'sqlite') {
+    if (actualDbType === 'sqlite') {
       // SQLite: 检查字段是否存在
       const tableInfo = await sequelize.query(
         "PRAGMA table_info(consumables)",
@@ -47,7 +51,7 @@ async function migrate() {
         console.log('updatedAt 索引已存在，跳过');
       }
 
-    } else if (dbDialect === 'mysql') {
+    } else if (actualDbType === 'mysql') {
       // MySQL: 检查并添加字段
       try {
         console.log('添加 version 字段...');

@@ -226,9 +226,16 @@ function ConsumableStatistics() {
   };
 
   useEffect(() => {
-    fetchSummary();
-    fetchLowStock();
-    fetchInOutStats();
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchSummary(),
+        fetchLowStock(),
+        fetchInOutStats()
+      ]);
+      setLoading(false);
+    };
+    loadData();
   }, []);
 
   useEffect(() => {
