@@ -1,5 +1,108 @@
 const express = require('express');
 const router = express.Router();
+
+// 增强设备数据导出 (必须放在最前面，防止被 /:deviceId 拦截)
+router.get('/enhanced-export', async (req, res) => {
+  try {
+    const { deviceIds, format, fields: fieldsJson, fieldLabels: fieldLabelsJson } = req.query;
+
+    if (format !== 'csv') {
+      return res.status(400).json({ error: '不支持的导出格式' });
+    }
+
+    // 解析 fields 和 fieldLabels
+    const fields = JSON.parse(fieldsJson || '[]');
+    const fieldLabels = JSON.parse(fieldLabelsJson || '{}');
+    
+    // 1. 查询设备
+    const where = {};
+    if (deviceIds) {
+      let ids = [];
+      if (Array.isArray(deviceIds)) {
+        ids = deviceIds;
+      } else if (typeof deviceIds === 'string') {
+        ids = deviceIds.split(',').filter(id => id.trim() !== '');
+      }
+      
+      if (ids.length > 0) {
+        where.deviceId = { [Op.in]: ids };
+      }
+    }
+
+    const devices = await Device.findAll({
+      where,
+      include: [
+        { model: Rack, include: [{ model: Room }] }
+      ]
+    });
+    
+    if (devices.length === 0) {
+      return res.status(404).json({ error: '未找到指定的设备' });
+    }
+    
+    // 2. 准备 CSV 标题
+    const csvHeaders = fields.map(field => ({
+      id: field,
+      title: fieldLabels[field] || field
+    }));
+    
+    // 3. 准备 CSV 数据
+    const csvData = devices.map(device => {
+      const row = {};
+      fields.forEach(field => {
+        let value = device[field];
+        
+        // 特殊字段处理
+        if (field === 'rackId') {
+          value = device.Rack?.name || device.rackId;
+        } else if (field === 'position') {
+          value = `${device.position}U`;
+        } else if (field === 'height') {
+          value = `${device.height}U`;
+        } else if (field === 'powerConsumption') {
+          value = `${device.powerConsumption}W`;
+        } else if (field === 'purchaseDate' || field === 'warrantyExpiry') {
+          value = value ? new Date(value).toLocaleDateString() : '';
+        } else if (field === 'owner' || field === 'department' || field === 'assetId' || field === 'brand') {
+          value = device.customFields?.[field] || value || '';
+        }
+        
+        row[field] = value;
+      });
+      return row;
+    });
+    
+    // 4. 写入 CSV 文件
+    const tempFilePath = path.join(__dirname, '../temp/enhanced_export.csv');
+    if (!fs.existsSync(path.join(__dirname, '../temp'))) {
+      fs.mkdirSync(path.join(__dirname, '../temp'));
+    }
+    
+    const csvWriter = createObjectCsvWriter({
+      path: tempFilePath,
+      header: csvHeaders,
+      encoding: 'utf8'
+    });
+    
+    await csvWriter.writeRecords(csvData);
+    
+    // 5. 转换为 GBK 编码并发送
+    const csvContent = fs.readFileSync(tempFilePath, 'utf8');
+    const gbkContent = iconv.encode(csvContent, 'gbk');
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=devices_enhanced_export.csv');
+    res.send(gbkContent);
+    
+    // 6. 删除临时文件
+    fs.unlinkSync(tempFilePath);
+  } catch (error) {
+    console.error('增强导出设备数据失败:', error);
+    res.status(500).json({ error: '增强导出设备数据失败' });
+  }
+});
+//结束
+
 const { Op } = require('sequelize');
 const { sequelize } = require('../db'); // Import sequelize for transactions
 const fs = require('fs');
@@ -1297,5 +1400,7 @@ router.get('/enhanced-export', async (req, res) => {
     res.status(500).json({ error: '增强导出失败' });
   }
 });
+
+
 
 module.exports = router;
